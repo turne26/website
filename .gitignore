@@ -1,0 +1,5 @@
+# local flat preview build (regenerate with python3 src/build.py)
+preview/
+__pycache__/
+*.pyc
+.DS_Store
