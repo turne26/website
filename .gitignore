@@ -3,3 +3,7 @@ preview/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/

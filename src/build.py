@@ -127,9 +127,14 @@ def build(mode):
     redirects = [("/index.html", "/"), ("/privacy.html", "/privacy/"), ("/terms.html", "/terms/")]
     write(os.path.join(out, "_redirects"),
           "".join(f"{a}  {b}  301\n" for a, b in redirects))
-    write(os.path.join(out, "vercel.json"), "{\n  \"trailingSlash\": true,\n  \"redirects\": [\n" + ",\n".join(
+    vercel = ("  \"trailingSlash\": true,\n  \"redirects\": [\n" + ",\n".join(
         f'    {{ "source": "{a}", "destination": "{b}", "permanent": true }}' for a, b in redirects) + "\n  ],\n"
         '  "headers": [\n    { "source": "/assets/(.*)", "headers": [ { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" } ] }\n  ]\n}\n')
+    # dist/vercel.json applies when Vercel's Root Directory is "dist"; the repo-root copy applies
+    # when it's left at the repo root, and points Vercel at the prebuilt dist/ folder.
+    write(os.path.join(out, "vercel.json"), "{\n" + vercel)
+    write(os.path.join(ROOT, "vercel.json"), "{\n  \"framework\": null,\n  \"installCommand\": \"\",\n"
+          "  \"buildCommand\": \"echo dist/ is prebuilt by src/build.py\",\n  \"outputDirectory\": \"dist\",\n" + vercel)
     write(os.path.join(out, ".htaccess"), "ErrorDocument 404 /404.html\nRewriteEngine On\n" + "".join(
         f"RewriteRule ^{a.lstrip('/').replace('.', chr(92) + '.')}$ {b} [R=301,L]\n" for a, b in redirects))
     return out

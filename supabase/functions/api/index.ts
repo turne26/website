@@ -1,0 +1,332 @@
+/*
+ * Turne API: the backend behind src/assets/js/api.js.
+ * Served at https://<project>.supabase.co/functions/v1/api, which is what apiBase in
+ * config.js points to. Endpoint contract: README.md ("Backend integration").
+ *
+ * Secrets (supabase secrets set NAME=value):
+ *   OTP_MODE            "test" (default: every code is 123456, nothing is sent) or "whatsapp"
+ *   WHATSAPP_TOKEN      Meta WhatsApp Cloud API access token          (OTP_MODE=whatsapp)
+ *   WHATSAPP_PHONE_ID   Phone number ID of the sending number         (OTP_MODE=whatsapp)
+ *   WHATSAPP_TEMPLATE   Approved authentication template name         (default "turne_otp")
+ *   WHATSAPP_LANG       Template language code                        (default "en")
+ *   ALLOWED_ORIGINS     Comma-separated extra origins allowed by CORS
+ *   LAUNCH_AT           ISO launch moment for the countdown; omit to use config.js
+ *   PREMIUM_LIMIT       Lifetime Premium spots (default 10000)
+ *   MIN_AGE             Minimum age to join (default 13)
+ * SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase automatically.
+ */
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const env = (k: string, d = "") => Deno.env.get(k) ?? d;
+const db = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
+  auth: { persistSession: false },
+});
+
+const OTP_MODE = env("OTP_MODE", "test");
+const PREMIUM_LIMIT = Number(env("PREMIUM_LIMIT", "10000"));
+const MIN_AGE = Number(env("MIN_AGE", "13"));
+const PEPPER = env("OTP_PEPPER", env("SUPABASE_SERVICE_ROLE_KEY"));
+
+const OTP_TTL_MIN = 10;
+const OTP_MAX_TRIES = 5;
+const RESEND_AFTER_S = 30;
+const SENDS_PER_PHONE_HOUR = 5;
+const SENDS_PER_IP_HOUR = 20;
+const TOKEN_TTL_MIN = 30;
+const FORMS_PER_IP_HOUR = 10;
+
+const ORIGINS = new Set(
+  ["https://turne.in", "https://www.turne.in", ...env("ALLOWED_ORIGINS").split(",")]
+    .map((o) => o.trim()).filter(Boolean),
+);
+const LOCAL = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+const VERCEL = /^https:\/\/[a-z0-9-]+\.vercel\.app$/;
+
+/* ------------------------------------------------------------------ helpers */
+
+class Fail extends Error {
+  constructor(public code: string, message: string, public status = 400) { super(message); }
+}
+
+function cors(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") ?? "";
+  const ok = ORIGINS.has(origin) || LOCAL.test(origin) || VERCEL.test(origin);
+  return ok
+    ? {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Accept",
+      "Access-Control-Max-Age": "86400",
+      "Vary": "Origin",
+    }
+    : { "Vary": "Origin" };
+}
+
+function json(req: Request, body: unknown, status = 200, extra: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...cors(req), ...extra },
+  });
+}
+
+function clientIp(req: Request) {
+  return (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || null;
+}
+
+async function sha256(text: string) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function randomDigits(n: number) {
+  const a = crypto.getRandomValues(new Uint32Array(n));
+  return Array.from(a, (x) => String(x % 10)).join("");
+}
+
+function randomToken() {
+  const a = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...a)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+const isPhone = (p: string) => /^[6-9]\d{9}$/.test(p);
+const isEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+function must<T>(res: { data: T; error: { message: string } | null }): T {
+  if (res.error) throw new Error(res.error.message);
+  return res.data;
+}
+
+/** Rows in `table` where `column` = value and `timeColumn` is within the last hour. */
+async function countLastHour(table: string, timeColumn: string, column: string, value: string | null) {
+  if (!value) return 0;
+  const { count, error } = await db.from(table).select("id", { count: "exact", head: true })
+    .eq(column, value).gte(timeColumn, new Date(Date.now() - 3600_000).toISOString());
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+function ageOn(dob: Date) {
+  const t = new Date();
+  let a = t.getUTCFullYear() - dob.getUTCFullYear();
+  if (t.getUTCMonth() < dob.getUTCMonth() ||
+    (t.getUTCMonth() === dob.getUTCMonth() && t.getUTCDate() < dob.getUTCDate())) a -= 1;
+  return a;
+}
+
+/* ------------------------------------------------------------------ WhatsApp */
+
+async function sendWhatsAppCode(phone: string, code: string) {
+  const res = await fetch(`https://graph.facebook.com/v21.0/${env("WHATSAPP_PHONE_ID")}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${env("WHATSAPP_TOKEN")}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: "91" + phone,
+      type: "template",
+      template: {
+        name: env("WHATSAPP_TEMPLATE", "turne_otp"),
+        language: { code: env("WHATSAPP_LANG", "en") },
+        components: [
+          { type: "body", parameters: [{ type: "text", text: code }] },
+          { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: code }] },
+        ],
+      },
+    }),
+  });
+  if (!res.ok) {
+    console.error("whatsapp send failed", res.status, await res.text());
+    throw new Fail("send_failed", "We couldn't send the code to WhatsApp. Check the number and try again.", 502);
+  }
+}
+
+/* ------------------------------------------------------------------ endpoints */
+
+async function stats() {
+  const { count, error } = await db.from("members").select("id", { count: "exact", head: true });
+  if (error) throw new Error(error.message);
+  const out: Record<string, unknown> = { waitlistCount: count ?? 0, premiumLimit: PREMIUM_LIMIT };
+  if (env("LAUNCH_AT")) out.launchAt = env("LAUNCH_AT");
+  return out;
+}
+
+async function otpSend(body: Record<string, unknown>, ip: string | null) {
+  const phone = str(body.phone, 20);
+  if (!isPhone(phone)) throw new Fail("invalid_phone", "Enter a 10-digit Indian mobile number.");
+
+  const last = must(await db.from("otp_codes").select("sent_at").eq("phone", phone).maybeSingle());
+  if (last && Date.now() - Date.parse(last.sent_at) < RESEND_AFTER_S * 1000) {
+    throw new Fail("rate_limited", `Wait ${RESEND_AFTER_S} seconds before asking for another code.`, 429);
+  }
+  if ((await countLastHour("otp_sends", "sent_at", "phone", phone)) >= SENDS_PER_PHONE_HOUR ||
+    (await countLastHour("otp_sends", "sent_at", "ip", ip)) >= SENDS_PER_IP_HOUR) {
+    throw new Fail("rate_limited", "Too many codes requested. Try again in an hour.", 429);
+  }
+
+  const test = OTP_MODE !== "whatsapp";
+  const code = test ? "123456" : randomDigits(6);
+  if (!test) await sendWhatsAppCode(phone, code);
+
+  must(await db.from("otp_codes").upsert({
+    phone,
+    code_hash: await sha256(`${PEPPER}:${phone}:${code}`),
+    attempts: 0,
+    expires_at: new Date(Date.now() + OTP_TTL_MIN * 60_000).toISOString(),
+    sent_at: new Date().toISOString(),
+  }));
+  must(await db.from("otp_sends").insert({ phone, ip }));
+
+  return test ? { ok: true, resendAfter: RESEND_AFTER_S, mock: true } : { ok: true, resendAfter: RESEND_AFTER_S };
+}
+
+async function otpVerify(body: Record<string, unknown>) {
+  const phone = str(body.phone, 20);
+  const code = str(body.code, 10);
+  if (!isPhone(phone)) throw new Fail("invalid_phone", "Enter a 10-digit Indian mobile number.");
+
+  const rec = must(await db.from("otp_codes").select("*").eq("phone", phone).maybeSingle());
+  if (!rec || Date.parse(rec.expires_at) < Date.now()) {
+    throw new Fail("otp_expired", "That code has expired. Send a new one.");
+  }
+  if (rec.attempts >= OTP_MAX_TRIES) {
+    throw new Fail("otp_locked", "Too many attempts. Send a new code.", 429);
+  }
+  must(await db.from("otp_codes").update({ attempts: rec.attempts + 1 }).eq("phone", phone));
+  if ((await sha256(`${PEPPER}:${phone}:${code}`)) !== rec.code_hash) {
+    throw new Fail("otp_invalid", "That code doesn't match. Check WhatsApp and try again.");
+  }
+  must(await db.from("otp_codes").delete().eq("phone", phone));
+
+  const token = randomToken();
+  must(await db.from("verification_tokens").insert({
+    token_hash: await sha256(token),
+    phone,
+    expires_at: new Date(Date.now() + TOKEN_TTL_MIN * 60_000).toISOString(),
+  }));
+
+  const m = must(await db.from("members").select("position, premium, invite_code").eq("phone", phone).maybeSingle());
+  return {
+    ok: true,
+    verificationToken: token,
+    existing: m ? { position: m.position, premium: m.premium, inviteCode: m.invite_code } : null,
+  };
+}
+
+async function waitlist(body: Record<string, unknown>) {
+  const token = str(body.verificationToken, 200);
+  const hash = token ? await sha256(token) : "";
+  const tok = hash
+    ? must(await db.from("verification_tokens").select("*").eq("token_hash", hash).maybeSingle())
+    : null;
+  if (!tok || tok.used_at || Date.parse(tok.expires_at) < Date.now()) {
+    throw new Fail("token_invalid", "Your verification expired. Start again.", 401);
+  }
+
+  // Honeypot: bots fill the hidden "company" field. Look successful, save nothing.
+  if (str(body.company, 200)) return { position: 0, premium: false, inviteCode: "" };
+
+  const name = str(body.name, 100);
+  const city = str(body.city, 80);
+  const dobRaw = str(body.dob, 10);
+  const dob = /^\d{4}-\d{2}-\d{2}$/.test(dobRaw) ? new Date(dobRaw + "T00:00:00Z") : null;
+  if (name.length < 2) throw new Fail("invalid_name", "Add your full name.");
+  if (!dob || isNaN(dob.getTime()) || ageOn(dob) > 100) throw new Fail("invalid_dob", "Add a valid date of birth.");
+  if (ageOn(dob) < MIN_AGE) throw new Fail("too_young", `You need to be at least ${MIN_AGE} to join.`);
+  if (!city) throw new Fail("invalid_city", "Pick your city, or choose Other and type it.");
+
+  const u = (body.utm && typeof body.utm === "object" ? body.utm : {}) as Record<string, unknown>;
+  const utm = Object.fromEntries(
+    ["source", "medium", "campaign", "content", "term"].map((k) => [k, str(u[k], 200) || null]),
+  );
+  const ref = str(body.ref, 20).toUpperCase() || null;
+
+  const rows = must(await db.rpc("turne_join", {
+    p_phone: tok.phone,
+    p_name: name,
+    p_dob: dobRaw,
+    p_city: city,
+    p_ref: ref,
+    p_utm: utm,
+    p_landing: str(body.landing, 300) || null,
+    p_premium_limit: PREMIUM_LIMIT,
+  })) as { member_position: number; member_premium: boolean; member_invite_code: string }[];
+  must(await db.from("verification_tokens").update({ used_at: new Date().toISOString() }).eq("token_hash", hash));
+
+  const r = rows[0];
+  return { position: r.member_position, premium: r.member_premium, inviteCode: r.member_invite_code };
+}
+
+async function brandEnquiry(body: Record<string, unknown>, ip: string | null) {
+  if (str(body.website, 200)) return { ok: true }; // honeypot
+  const row = {
+    name: str(body.name, 100),
+    company: str(body.company, 150),
+    email: str(body.email, 200),
+    phone: str(body.phone, 30) || null,
+    plan: str(body.plan, 50) || null,
+    message: str(body.message, 5000) || null,
+    ip,
+  };
+  if (!row.name || !row.company || !isEmail(row.email)) {
+    throw new Fail("invalid_form", "Fill in your name, company and a valid email.");
+  }
+  if ((await countLastHour("brand_enquiries", "created_at", "ip", ip)) >= FORMS_PER_IP_HOUR) {
+    throw new Fail("rate_limited", "Too many messages from this connection. Try again in an hour.", 429);
+  }
+  must(await db.from("brand_enquiries").insert(row));
+  return { ok: true };
+}
+
+async function contact(body: Record<string, unknown>, ip: string | null) {
+  if (str(body.website, 200)) return { ok: true }; // honeypot
+  const row = {
+    name: str(body.name, 100),
+    email: str(body.email, 200),
+    topic: str(body.topic, 50) || null,
+    message: str(body.message, 5000),
+    ip,
+  };
+  if (!row.name || !isEmail(row.email) || !row.message) {
+    throw new Fail("invalid_form", "Fill in your name, a valid email and your message.");
+  }
+  if ((await countLastHour("contact_messages", "created_at", "ip", ip)) >= FORMS_PER_IP_HOUR) {
+    throw new Fail("rate_limited", "Too many messages from this connection. Try again in an hour.", 429);
+  }
+  must(await db.from("contact_messages").insert(row));
+  return { ok: true };
+}
+
+/* ------------------------------------------------------------------ router */
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req) });
+
+  // The function sees /api/<route>; strip everything up to and including "/api".
+  const path = new URL(req.url).pathname.replace(/^.*?\/api(?=\/|$)/, "").replace(/\/+$/, "") || "/";
+  const ip = clientIp(req);
+
+  try {
+    if (req.method === "GET" && path === "/stats") {
+      return json(req, await stats(), 200, { "Cache-Control": "public, max-age=20" });
+    }
+    if (req.method !== "POST") throw new Fail("not_found", "Not found.", 404);
+
+    let body: Record<string, unknown>;
+    try { body = await req.json(); } catch { throw new Fail("bad_request", "Send a JSON body.", 400); }
+    if (!body || typeof body !== "object") throw new Fail("bad_request", "Send a JSON body.", 400);
+
+    switch (path) {
+      case "/otp/send": return json(req, await otpSend(body, ip));
+      case "/otp/verify": return json(req, await otpVerify(body));
+      case "/waitlist": return json(req, await waitlist(body));
+      case "/brands/enquiry": return json(req, await brandEnquiry(body, ip));
+      case "/contact": return json(req, await contact(body, ip));
+    }
+    throw new Fail("not_found", "Not found.", 404);
+  } catch (e) {
+    if (e instanceof Fail) return json(req, { error: { code: e.code, message: e.message } }, e.status);
+    console.error(e);
+    return json(req, { error: { code: "server_error", message: "Something went wrong on our side. Try again in a minute." } }, 500);
+  }
+});

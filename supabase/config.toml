@@ -1,0 +1,7 @@
+# Supabase CLI config for the Turne backend. Link it with: supabase link --project-ref <ref>
+project_id = "turne"
+
+# The site calls the API without a Supabase login, so the gateway must not demand a JWT.
+# The function does its own checks (OTP, verification tokens, rate limits).
+[functions.api]
+verify_jwt = false

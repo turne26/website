@@ -42,6 +42,8 @@ python3 src/gen_images.py     # only if you change share-image headlines (needs:
 
 Deploy `dist/`. URLs are clean (`/premium/`, `/faq/`). `dist/_redirects` (Netlify, Cloudflare) and `dist/vercel.json` 301-redirect the old `/privacy.html` and `/terms.html`, so existing links and rankings carry over. `.htaccess` does the same on Apache.
 
+On Vercel, import the repo with the default settings: the root `vercel.json` (also written by `build.py`) tells Vercel to skip the build and serve the committed `dist/` folder. Rebuild and push `dist/` after every change.
+
 ## Pages
 
 | URL | Page | Notes |
@@ -68,6 +70,37 @@ Deploy `dist/`. URLs are clean (`/premium/`, `/faq/`). `dist/_redirects` (Netlif
 - Self-hosted fonts with preload and `font-display: swap`, no third-party requests
 
 After launch, submit `https://turne.in/sitemap.xml` in Google Search Console.
+
+## Backend (Supabase)
+
+The API below is implemented in `supabase/`:
+
+```
+supabase/
+  migrations/20261108000000_turne_backend.sql   tables, locked down with RLS; turne_join() hands out positions
+  functions/api/index.ts                        one Edge Function serving every endpoint below
+  config.toml                                   turns off JWT checks for the api function
+```
+
+Set it up once (Supabase CLI, run from the repo root):
+
+```bash
+supabase link --project-ref <ref>
+supabase db push                          # creates the tables
+supabase functions deploy api --no-verify-jwt
+```
+
+Then set `apiBase` in `src/assets/js/config.js` to `https://<ref>.supabase.co/functions/v1/api`, run `python3 src/build.py` and push.
+
+The function starts in **test mode**: no WhatsApp message is sent, the code is always `123456`, and the site shows the test-code hint. To send real codes, create an approved WhatsApp *authentication* template with one `{{1}}` code and a copy-code button in Meta's WhatsApp Manager, then:
+
+```bash
+supabase secrets set OTP_MODE=whatsapp WHATSAPP_TOKEN=... WHATSAPP_PHONE_ID=... WHATSAPP_TEMPLATE=turne_otp
+```
+
+Other optional secrets: `LAUNCH_AT` (overrides the countdown date), `PREMIUM_LIMIT` (10000), `MIN_AGE` (13), `ALLOWED_ORIGINS` (extra CORS origins; `turne.in`, `www.turne.in`, `*.vercel.app` and localhost are already allowed).
+
+Signups, brand enquiries and contact messages are in the Table Editor (`members`, `brand_enquiries`, `contact_messages`). `referral_leaderboard` lists who invited the most people.
 
 ## Backend integration
 
