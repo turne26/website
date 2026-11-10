@@ -53,9 +53,9 @@ def stat(key):
     return f'<span class="num" data-stat="{key}">{val}</span>'
 
 
-MARK = ('<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle cx="16" cy="16" r="4.5" fill="currentColor"/>'
-        '<g stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M16 11.5V3"/><path d="M19.9 18.25 27.3 22.5"/>'
-        '<path d="M12.1 18.25 4.7 22.5"/></g></svg>')
+# The Turne logo (mark + wordmark), cut from src/brand/turne-logo.jpg by src/make_logo.py.
+LOGO_IMGS = ('<img class="logo__mark" src="{{a}}img/logo-mark.png" width="157" height="120" alt="">'
+             '<img class="logo__word" src="{{a}}img/logo-word.png" width="392" height="66" alt="">')
 
 
 def head(page, mode):
@@ -94,7 +94,6 @@ def head(page, mode):
         f'<meta name="twitter:image" content="{og_img}">',
         f'<link rel="alternate" hreflang="en-IN" href="{canonical}">',
         f'<link rel="alternate" hreflang="x-default" href="{canonical}">',
-        '<link rel="icon" href="{{a}}img/favicon.svg" type="image/svg+xml">',
         '<link rel="icon" href="{{a}}img/favicon-32.png" sizes="32x32" type="image/png">',
         '<link rel="apple-touch-icon" href="{{a}}img/apple-touch-icon.png">',
         '<link rel="manifest" href="site.webmanifest">' if mode == "preview" else '<link rel="manifest" href="/site.webmanifest">',
@@ -162,13 +161,9 @@ def strip_tags(s):
     return re.sub(r"<[^>]+>", "", s)
 
 
-def logo(uid):
-    """The Turne swoosh mark + wordmark. uid keeps gradient ids unique per instance."""
-    return (f'<a class="logo" href="{{{{u:}}}}" aria-label="Turne home">'
-            f'<svg class="logo__mark" viewBox="0 0 40 28" aria-hidden="true" focusable="false"><defs>'
-            f'<linearGradient id="lg-{uid}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#9b5cff"/><stop offset=".45" stop-color="#c77dff"/><stop offset=".75" stop-color="#d4ff3a"/><stop offset="1" stop-color="#d4ff3a"/></linearGradient></defs>'
-            f'<path fill="url(#lg-{uid})" d="M2 25C7 13 17 5.5 38 3c-5.5 2.6-9.6 6.5-12 11.8C17.5 15.7 9.8 19 2 25z"/></svg>'
-            f'<span>TURNE</span></a>')
+def logo():
+    """The Turne logo, linking home."""
+    return f'<a class="logo" href="{{{{u:}}}}" aria-label="Turne home">{LOGO_IMGS}</a>'
 
 
 ARROW = '<svg class="arr" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10h13M11 4.5 16.5 10 11 15.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
@@ -183,7 +178,7 @@ def header(page):
     return f"""<a class="skip" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="wrap">
-    {logo("h")}
+    {logo()}
     <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu"><span></span><span></span><span></span></button>
     <nav class="nav" id="site-nav" aria-label="Main">
       <div class="nav-links">{"".join(links)}</div>
@@ -201,7 +196,7 @@ def footer(page):
     mail = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>'
     return f"""<footer class="site-footer" data-hide-sticky>
   <div class="wrap foot">
-    <div class="foot__brand">{logo("f")}<p>Discover Events. Win Giveaways. Connect with Brands.</p></div>
+    <div class="foot__brand">{logo()}<p>Discover Events. Win Giveaways. Connect with Brands.</p></div>
     <a class="foot__mail" href="mailto:support@turne.in">{mail}support@turne.in</a>
     <nav class="foot__legal" aria-label="Legal"><a href="{{{{u:privacy}}}}">Privacy Policy</a><a href="{{{{u:terms}}}}">Terms of Use</a></nav>
   </div>
@@ -275,7 +270,7 @@ def phone_feed():
     return """<figure style="margin:0;display:grid;gap:1rem;justify-items:center">
   <div class="phone" aria-label="Example of the Turne app feed">
     <div class="phone__screen">
-      <div class="phone__bar"><b>TURNE</b><span>Happening near you</span></div>
+      <div class="phone__bar"><img class="phone__logo" src="{{a}}img/logo-word.png" width="392" height="66" alt="Turne"><span>Happening near you</span></div>
       <div class="feed-card">
         <small class="live">Demo event, live now</small>
         <strong>Move different.</strong>

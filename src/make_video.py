@@ -20,7 +20,7 @@ from functools import partial
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-from layout import explainer, MARK  # noqa: E402
+from layout import explainer, LOGO_IMGS  # noqa: E402
 
 W, H, FPS = 1920, 1080, 30
 INTRO, MAIN, OUTRO = 3.0, 25.0, 4.5
@@ -41,7 +41,6 @@ html, body {{ width: {W}px; height: {H}px; overflow: hidden; margin: 0; }}
 .card h1 {{ font-size: 9.2rem; line-height: .98; }}
 .card p {{ font-size: 2.1rem; color: var(--muted); max-width: 30em; }}
 .card .logo {{ font-size: 3.4rem; }}
-.card .logo svg {{ width: 44px; height: 44px; }}
 .card .stub {{ position: absolute; right: -60px; top: 120px; width: 330px; height: 840px; border-radius: 26px; background: var(--violet); transform: rotate(9deg); display: grid; place-items: center; }}
 .card .stub b {{ writing-mode: vertical-rl; transform: rotate(180deg); font: 800 5.2rem/1 var(--display); color: #fff; letter-spacing: -.02em; }}
 .card .stub::before {{ content: ""; position: absolute; left: 0; top: 0; bottom: 0; border-left: 6px dashed rgba(7,7,12,.35); }}
@@ -51,13 +50,13 @@ html, body {{ width: {W}px; height: {H}px; overflow: hidden; margin: 0; }}
 
 
 def logo():
-    return f'<span class="logo"><span class="hl-m">{MARK}</span>TURNE</span>'
+    return f'<span class="logo">{LOGO_IMGS}</span>'
 
 
 def write_pages():
     os.makedirs(WORK, exist_ok=True)
     film = page(
-        f'<a class="logo film-logo"><span class="hl-m">{MARK}</span>TURNE</a>{explainer(film=True)}<p class="film-url">turne.in</p>',
+        f'<a class="logo film-logo">{LOGO_IMGS}</a>{explainer(film=True)}<p class="film-url">turne.in</p>',
         scripts='<script src="/dist/assets/js/explainer.js"></script>')
     film = film.replace("{{a}}", "/dist/assets/").replace("{{u:join}}", "#")
     intro = page(f"""<div class="card">{logo()}<h1>Don't just watch.<br><span class="hl-m">Participate.</span></h1>
@@ -69,7 +68,7 @@ def write_pages():
 <div class="stub"><b>ADMIT ONE</b></div></div>""")
     for name, html in (("film.html", film), ("intro.html", intro), ("outro.html", outro)):
         with open(os.path.join(WORK, name), "w", encoding="utf-8") as f:
-            f.write(html)
+            f.write(html.replace("{{a}}", "/dist/assets/"))
 
 
 def serve():

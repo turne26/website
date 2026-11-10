@@ -10,6 +10,8 @@ src/
   pages.py        Why Turne, How it works, Giveaways, Premium, Brands, FAQ, Contact, Join
   legal.py        Privacy, Terms, 404
   gen_images.py   renders share images (assets/og/*.png) and app icons
+  make_logo.py    cuts the logo out of brand/turne-logo.jpg into transparent PNGs
+  brand/          logo artwork and large cut-outs (not deployed)
   make_video.py   renders video/turne-explainer.mp4 from the site animation
   assets/
     css/site.css
@@ -37,6 +39,7 @@ Near-black base (`--night #07070c`), electric violet as the brand colour (`--vio
 
 ```bash
 python3 src/build.py          # rebuild dist/ and preview/
+python3 src/make_logo.py      # only if the logo artwork in src/brand/ changes, then run gen_images.py
 python3 src/gen_images.py     # only if you change share-image headlines (needs: pip install playwright && playwright install chromium)
 ```
 
