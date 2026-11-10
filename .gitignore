@@ -7,3 +7,8 @@ __pycache__/
 # Supabase CLI local state
 supabase/.temp/
 supabase/.branches/
+
+# Secrets: never commit real keys (the .env.example templates are fine)
+.env
+.env.*
+!.env.example

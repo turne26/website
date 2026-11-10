@@ -97,11 +97,13 @@ Then set `apiBase` in `src/assets/js/config.js` to `https://<ref>.supabase.co/fu
 
 The function starts in **test mode**: no WhatsApp message is sent, the code is always `123456`, and the site shows the test-code hint. To send real codes, create an approved WhatsApp *authentication* template with one `{{1}}` code and a copy-code button in Meta's WhatsApp Manager, then:
 
+fill in `supabase/functions/.env` (copy it from `.env.example` next to it; git ignores the real one) with `OTP_MODE=whatsapp` and your WhatsApp keys, and upload it:
+
 ```bash
-supabase secrets set OTP_MODE=whatsapp WHATSAPP_TOKEN=... WHATSAPP_PHONE_ID=... WHATSAPP_TEMPLATE=turne_otp
+supabase secrets set --env-file supabase/functions/.env
 ```
 
-Other optional secrets: `LAUNCH_AT` (overrides the countdown date), `PREMIUM_LIMIT` (10000), `MIN_AGE` (13), `ALLOWED_ORIGINS` (extra CORS origins; `turne.in`, `www.turne.in`, `*.vercel.app` and localhost are already allowed).
+Other optional secrets, all listed in `.env.example`: `LAUNCH_AT` (overrides the countdown date), `PREMIUM_LIMIT` (10000), `MIN_AGE` (13), `ALLOWED_ORIGINS` (extra CORS origins; `turne.in`, `www.turne.in`, `*.vercel.app` and localhost are already allowed).
 
 Signups, brand enquiries and contact messages are in the Table Editor (`members`, `brand_enquiries`, `contact_messages`). `referral_leaderboard` lists who invited the most people.
 
