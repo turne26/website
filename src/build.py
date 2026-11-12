@@ -7,6 +7,7 @@
 No dependencies beyond Python 3.8+. Edit content in pages.py / legal.py, styles in
 assets/css/site.css, backend URL in assets/js/config.js.
 """
+import hashlib
 import os
 import re
 import shutil
@@ -30,8 +31,22 @@ def link(slug, mode):
     return "index.html" if not slug else f"{slug}.html"
 
 
+_versions = {}
+
+
+def version(rel):
+    """Short content hash of src/assets/<rel>, so a changed file gets a new URL."""
+    if rel not in _versions:
+        with open(os.path.join(ASSETS, rel), "rb") as f:
+            _versions[rel] = hashlib.sha1(f.read()).hexdigest()[:8]
+    return _versions[rel]
+
+
 def resolve(html, mode):
     html = re.sub(r"\{\{u:([a-z0-9-]*)\}\}", lambda m: link(m.group(1), mode), html)
+    # /assets/ is cached for a year (vercel.json), so JS and CSS URLs carry a content hash.
+    html = re.sub(r'\{\{a\}\}((?:js|css)/[\w.-]+\.(?:js|css))"',
+                  lambda m: f'{{{{a}}}}{m.group(1)}?v={version(m.group(1))}"', html)
     html = html.replace("{{a}}", "/assets/" if mode == "prod" else "assets/")
     leftover = re.findall(r"\{\{[^}]*\}\}", html)
     if leftover:

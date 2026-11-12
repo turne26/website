@@ -18,7 +18,7 @@ src/
     js/config.js  <- the only file to edit when connecting the backend
     js/api.js     every network call lives here (with a mock mode)
     js/site.js    menu, live counters, countdown, UTM/referral capture
-    js/join.js    WhatsApp OTP signup flow
+    js/join.js    SMS OTP signup flow
     js/forms.js   brand enquiry + contact forms
     js/explainer.js  the 3D "How a Turne event works" animation (How it works)
     fonts/        self-hosted Plus Jakarta Sans (woff2)
@@ -59,7 +59,7 @@ On Vercel, import the repo with the default settings: the root `vercel.json` (al
 | `/brands/` | For brands | Capabilities and enquiry form |
 | `/faq/` | FAQ | 12 questions, FAQPage schema |
 | `/contact/` | Contact | Three inboxes and a contact form |
-| `/join/` | Join the waitlist | 4-step WhatsApp OTP signup |
+| `/join/` | Join the waitlist | 4-step SMS OTP signup |
 | `/privacy/`, `/terms/` | Legal | Full text from the current site |
 | `/404.html` | Not found | `noindex` |
 
@@ -95,9 +95,7 @@ supabase functions deploy api --no-verify-jwt
 
 Then set `apiBase` in `src/assets/js/config.js` to `https://<ref>.supabase.co/functions/v1/api`, run `python3 src/build.py` and push.
 
-The function starts in **test mode**: no WhatsApp message is sent, the code is always `123456`, and the site shows the test-code hint. To send real codes, create an approved WhatsApp *authentication* template with one `{{1}}` code and a copy-code button in Meta's WhatsApp Manager, then:
-
-fill in `supabase/functions/.env` (copy it from `.env.example` next to it; git ignores the real one) with `OTP_MODE=whatsapp` and your WhatsApp keys, and upload it:
+The function starts in **test mode**: no message is sent, the code is always `123456`, and the site shows the test-code hint. Real codes go through [Message Central VerifyNow](https://www.messagecentral.com/product/verify-now/api), which generates, delivers and checks the code (the backend stores only its `verificationId`). To switch it on, fill in `supabase/functions/.env` (copy it from `.env.example` next to it; git ignores the real one) with `OTP_MODE=messagecentral`, `MC_CUSTOMER_ID`, `MC_PASSWORD` and `MC_FLOW=SMS`, and upload it:
 
 ```bash
 supabase secrets set --env-file supabase/functions/.env
@@ -114,7 +112,7 @@ Set `apiBase` in `assets/js/config.js` (for example `"https://api.turne.in/v1"`)
 All requests are JSON with `credentials: "include"`. Allow CORS from `https://turne.in` if the API is on another origin. Errors should return a non-2xx status with:
 
 ```json
-{ "error": { "code": "otp_invalid", "message": "That code doesn't match. Check WhatsApp and try again." } }
+{ "error": { "code": "otp_invalid", "message": "That code doesn't match. Check the SMS and try again." } }
 ```
 
 `message` is shown to the person as-is, so write it for them.
@@ -129,7 +127,7 @@ Feeds every live number on the site (tally, spots left, % claimed, countdown). I
 ```json
 { "phone": "9876543210" }
 ```
-→ `{ "ok": true, "resendAfter": 30 }`. The phone number is 10 digits with no country code (+91 is implied). Send the code on WhatsApp. Enforce rate limits (Privacy §6). Error codes the UI expects: `invalid_phone`, `rate_limited`.
+→ `{ "ok": true, "resendAfter": 30 }`. The phone number is 10 digits with no country code (+91 is implied). Send the code by SMS. Enforce rate limits (Privacy §6). Error codes the UI expects: `invalid_phone`, `rate_limited`.
 
 ### POST `/otp/verify`
 ```json

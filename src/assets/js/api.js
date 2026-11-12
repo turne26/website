@@ -71,7 +71,7 @@
           if (!rec) return fail("That code has expired. Send a new one.", "otp_expired");
           rec.tries += 1;
           if (rec.tries > 5) return fail("Too many attempts. Send a new code.", "otp_locked", 429);
-          if (p.code !== rec.code) return fail("That code doesn't match. Check WhatsApp and try again.", "otp_invalid");
+          if (p.code !== rec.code) return fail("That code doesn't match. Check the SMS and try again.", "otp_invalid");
           var t = "mock_" + code();
           tokens[t] = p.phone;
           return { ok: true, verificationToken: t, existing: members[p.phone] || null };

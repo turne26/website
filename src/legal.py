@@ -65,7 +65,7 @@ legal_page(
 
 <h2 id="p2">2. How we use your information</h2>
 <ul>
-<li>To verify your WhatsApp number by one-time password (OTP).</li>
+<li>To verify your mobile number by a one-time password (OTP) sent by SMS.</li>
 <li>To create and maintain your waitlist entry and position.</li>
 <li>To determine whether you qualify for Lifetime Premium as one of the first 10,000 verified members.</li>
 <li>To send you WhatsApp messages about the Turne launch, your waitlist spot and your Premium status.</li>
@@ -81,7 +81,7 @@ legal_page(
 <h2 id="p4">4. Who we share data with</h2>
 <p>We share your information only with service providers who help us operate Turne, and only to the extent they need it:</p>
 <ul>
-<li><strong>Our WhatsApp messaging provider</strong> receives your phone number in order to deliver your one-time password and launch messages.</li>
+<li><strong>Our SMS and WhatsApp messaging providers</strong> receive your phone number in order to deliver your one-time password (by SMS) and launch messages (on WhatsApp).</li>
 <li><strong>Our hosting and database provider</strong> stores your waitlist record.</li>
 <li><strong>Our analytics provider</strong> receives anonymised or pseudonymised usage events, not your name or phone number.</li>
 </ul>
@@ -131,7 +131,7 @@ legal_page(
 <h3 id="a2">A2. Eligibility</h3>
 <p>You must be at least {ph("13")} years old and hold a valid WhatsApp number to join. Some experiences and giveaways carry their own minimum age, which will be stated at the time.</p>
 <h3 id="a3">A3. Verification and one entry per number</h3>
-<p>Your registration is complete only once your WhatsApp number is verified by the one-time password we send you. Each WhatsApp number may hold one waitlist entry. Attempting to register the same number more than once will return your existing entry rather than creating a new one.</p>
+<p>Your registration is complete only once your mobile number is verified by the one-time password we send you by SMS. Each mobile number may hold one waitlist entry. Attempting to register the same number more than once will return your existing entry rather than creating a new one.</p>
 <h3 id="a4">A4. Waitlist position</h3>
 <p>Positions are assigned in the order that registrations are verified, continuing from our existing member count. Your position is final once assigned and cannot be transferred, sold or exchanged.</p>
 <h3 id="a5">A5. Conduct</h3>

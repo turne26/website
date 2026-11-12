@@ -1,4 +1,4 @@
-/* Turne — waitlist signup: WhatsApp number -> OTP -> details -> ticket. */
+/* Turne — waitlist signup: mobile number -> SMS OTP -> details -> ticket. */
 (function () {
   "use strict";
   var root = document.getElementById("join-flow");
@@ -55,7 +55,7 @@
     var phone = normalisePhone(phoneInput.value);
     if (!/^[6-9]\d{9}$/.test(phone)) {
       phoneInput.setAttribute("aria-invalid", "true");
-      setError("phone-error", "Enter your 10-digit WhatsApp number, without +91.");
+      setError("phone-error", "Enter your 10-digit mobile number, without +91.");
       phoneInput.focus(); return;
     }
     phoneInput.removeAttribute("aria-invalid"); setError("phone-error", "");
@@ -101,7 +101,7 @@
     e.preventDefault();
     if (verifying) return;
     var code = otpValue();
-    if (code.length !== OTP_LEN) { setError("otp-error", "Enter all " + OTP_LEN + " digits from WhatsApp."); return; }
+    if (code.length !== OTP_LEN) { setError("otp-error", "Enter all " + OTP_LEN + " digits from the SMS."); return; }
     var btn = panels.otp.querySelector("button[type=submit]");
     verifying = true; busy(btn, true, "Checking…");
     api.verifyOtp({ phone: state.phone, code: code }).then(function (res) {

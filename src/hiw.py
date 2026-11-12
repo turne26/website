@@ -324,7 +324,7 @@ BODY = f"""
       <p class="lede">Join the waitlist now and you'll be first through the door at launch.</p>
     </div>
     <ol class="loop loop--3">
-      <li><b>Verify WhatsApp</b><span>Enter your number. We send a 6-digit code on WhatsApp.</span></li>
+      <li><b>Verify your number</b><span>Enter your mobile number. We text you a 6-digit code.</span></li>
       <li><b>Enter the code</b><span>This confirms it's really you. No spam, ever.</span></li>
       <li><b>Add your details</b><span>Name, date of birth and city, and your spot is locked in.</span></li>
     </ol>
