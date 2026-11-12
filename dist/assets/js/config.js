@@ -9,7 +9,7 @@
  *             GET /stats returns its own launchAt. PLACEHOLDER: replace with the real date.
  */
 window.TURNE_CONFIG = {
-  apiBase: "",
+  apiBase: "https://tgnrnjnuemnjvancelyo.supabase.co/functions/v1/api",
   launchAt: "2027-01-26T10:00:00+05:30",
   premiumLimit: 10000,
   siteUrl: "https://turne.in",

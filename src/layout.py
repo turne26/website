@@ -96,7 +96,7 @@ def head(page, mode):
         f'<link rel="alternate" hreflang="x-default" href="{canonical}">',
         '<link rel="icon" href="{{a}}img/favicon-32.png" sizes="32x32" type="image/png">',
         '<link rel="apple-touch-icon" href="{{a}}img/apple-touch-icon.png">',
-        '<link rel="manifest" href="site.webmanifest">' if mode == "preview" else '<link rel="manifest" href="/site.webmanifest">',
+        '<link rel="manifest" href="site.webmanifest">' if mode == "preview" else '<link rel="manifest" href="/site.webmanifest" crossorigin="use-credentials">',
         '<link rel="preload" href="{{a}}fonts/plus-jakarta-sans-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>',
         '<link rel="preload" href="{{a}}fonts/plus-jakarta-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>',
         '<link rel="stylesheet" href="{{a}}css/site.css">',
