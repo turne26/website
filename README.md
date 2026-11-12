@@ -127,7 +127,7 @@ Feeds every live number on the site (tally, spots left, % claimed, countdown). I
 ```json
 { "phone": "9876543210" }
 ```
-→ `{ "ok": true, "resendAfter": 30 }`. The phone number is 10 digits with no country code (+91 is implied). Send the code by SMS. Enforce rate limits (Privacy §6). Error codes the UI expects: `invalid_phone`, `rate_limited`.
+→ `{ "ok": true, "resendAfter": 30 }`. The phone number is 10 digits with no country code (+91 is implied). Send the code by SMS. Enforce rate limits (Privacy §6). Error codes the UI expects: `invalid_phone`, `rate_limited`, `already_registered` (409: the number is already on the waitlist, so no SMS is sent).
 
 ### POST `/otp/verify`
 ```json

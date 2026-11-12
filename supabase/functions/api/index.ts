@@ -36,6 +36,7 @@ const SENDS_PER_PHONE_HOUR = 5;
 const SENDS_PER_IP_HOUR = 20;
 const TOKEN_TTL_MIN = 30;
 const FORMS_PER_IP_HOUR = 10;
+const ALREADY_REGISTERED = "This number is already on the waitlist, so you're all set. We'll message you before launch.";
 
 const ORIGINS = new Set(
   ["https://turne.in", "https://www.turne.in", ...env("ALLOWED_ORIGINS").split(",")]
@@ -204,6 +205,11 @@ async function stats() {
 async function otpSend(body: Record<string, unknown>, ip: string | null) {
   const phone = str(body.phone, 20);
   if (!isPhone(phone)) throw new Fail("invalid_phone", "Enter a 10-digit Indian mobile number.");
+
+  // Already registered: say so and spend no SMS. Only the fact that it's registered is
+  // revealed; the spot, name and invite code still need the OTP (see otpVerify).
+  const member = must(await db.from("members").select("id").eq("phone", phone).maybeSingle());
+  if (member) throw new Fail("already_registered", ALREADY_REGISTERED, 409);
 
   const last = must(await db.from("otp_codes").select("sent_at").eq("phone", phone).maybeSingle());
   if (last && Date.now() - Date.parse(last.sent_at) < RESEND_AFTER_S * 1000) {

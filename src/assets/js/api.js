@@ -61,6 +61,7 @@
       sendOtp: function (p) {
         return wait(500).then(function () {
           if (!/^[6-9]\d{9}$/.test(p.phone)) return fail("Enter a 10-digit Indian mobile number.", "invalid_phone");
+          if (members[p.phone]) return fail("This number is already on the waitlist, so you're all set. We'll message you before launch.", "already_registered", 409);
           pending[p.phone] = { code: "123456", tries: 0 };
           return { ok: true, resendAfter: cfg.otpResendSeconds || 30, mock: true };
         });
