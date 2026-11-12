@@ -10,6 +10,7 @@
  *   MC_PASSWORD         Message Central account password (plain; it's base64-encoded here).
  *                       Used to get a token when MC_AUTH_TOKEN is empty or expired.
  *   MC_FLOW             "SMS" (default) or "WHATSAPP": the channel VerifyNow delivers the code on
+ *   ADMIN_EMAILS        Comma-separated emails allowed into the /admin/ panel (Supabase Auth users)
  *   ALLOWED_ORIGINS     Comma-separated extra origins allowed by CORS
  *   LAUNCH_AT           ISO launch moment for the countdown; omit to use config.js
  *   PREMIUM_LIMIT       Lifetime Premium spots (default 10000)
@@ -57,7 +58,7 @@ function cors(req: Request): Record<string, string> {
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Credentials": "true",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Accept",
+      "Access-Control-Allow-Headers": "Content-Type, Accept, Authorization",
       "Access-Control-Max-Age": "86400",
       "Vary": "Origin",
     }
@@ -351,6 +352,214 @@ async function contact(body: Record<string, unknown>, ip: string | null) {
   return { ok: true };
 }
 
+/* ------------------------------------------------------------------ admin */
+// The /admin/ page signs in with Supabase Auth (email + password) and sends the session's
+// access token. Only confirmed accounts whose email is in ADMIN_EMAILS get through.
+
+const ADMIN_EMAILS = new Set(
+  env("ADMIN_EMAILS").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean),
+);
+const ADMIN_PAGE = 50;
+const STATUSES = new Set(["new", "in_progress", "done", "spam"]);
+
+async function requireAdmin(req: Request) {
+  const auth = req.headers.get("authorization") ?? "";
+  const jwt = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (!jwt) throw new Fail("unauthorized", "Sign in to continue.", 401);
+  const { data, error } = await db.auth.getUser(jwt);
+  const user = data?.user;
+  if (error || !user) throw new Fail("unauthorized", "Your session expired. Sign in again.", 401);
+  const email = (user.email ?? "").toLowerCase();
+  if (!user.email_confirmed_at || !ADMIN_EMAILS.has(email)) {
+    throw new Fail("forbidden", "This account doesn't have admin access.", 403);
+  }
+  return email;
+}
+
+async function audit(admin: string, action: string, target: string, detail: Record<string, unknown> = {}) {
+  must(await db.from("admin_log").insert({ admin_email: admin, action, target, detail }));
+}
+
+const maskPhone = (p: string) => p.slice(0, 2) + "xxxxxx" + p.slice(-2);
+const pageOf = (url: URL) => Math.max(0, Math.floor(Number(url.searchParams.get("page")) || 0));
+/** Search text safe to put inside a PostgREST or() filter. */
+const searchText = (s: string) => s.replace(/[^\p{L}\p{N} @._+-]/gu, "").trim().slice(0, 60);
+
+async function adminOverview() {
+  return must(await db.rpc("turne_admin_overview", { p_premium_limit: PREMIUM_LIMIT }));
+}
+
+async function adminMembers(url: URL) {
+  const p = url.searchParams;
+  const page = pageOf(url);
+  let q = db.from("admin_members").select("*", { count: "exact" });
+
+  const s = searchText(p.get("q") ?? "");
+  if (s) {
+    const ors = [`name.ilike."*${s}*"`, `city.ilike."*${s}*"`, `invite_code.ilike."*${s}*"`];
+    const digits = s.replace(/\D/g, "");
+    if (digits.length >= 3 && /^[\d\s+-]+$/.test(s)) ors.push(`phone.ilike."*${digits.slice(-10)}*"`);
+    if (/^\d+$/.test(s)) ors.push(`position.eq.${Number(s)}`);
+    q = q.or(ors.join(","));
+  }
+  const city = str(p.get("city"), 80);
+  if (city) q = q.eq("city", city);
+  const tier = p.get("tier");
+  if (tier === "premium") q = q.eq("premium", true);
+  if (tier === "member") q = q.eq("premium", false);
+
+  const sort = p.get("sort");
+  q = sort === "oldest" ? q.order("position", { ascending: true })
+    : sort === "name" ? q.order("name", { ascending: true })
+    : q.order("position", { ascending: false });
+
+  const { data, count, error } = await q.range(page * ADMIN_PAGE, page * ADMIN_PAGE + ADMIN_PAGE - 1);
+  if (error) throw new Error(error.message);
+  return { rows: data ?? [], total: count ?? 0, page, pageSize: ADMIN_PAGE };
+}
+
+function csvCell(v: unknown) {
+  let s = v === null || v === undefined ? "" : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; // stop spreadsheet formulas
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+async function adminExport(req: Request) {
+  const cols = ["position", "name", "phone", "dob", "city", "premium", "invite_code", "referrer_position",
+    "referrals", "ref_code", "utm_source", "utm_medium", "utm_campaign", "landing", "created_at"];
+  const lines = [cols.join(",")];
+  for (let from = 0; ; from += 1000) {
+    const rows = must(await db.from("admin_members").select(cols.join(","))
+      .order("position", { ascending: true }).range(from, from + 999)) as unknown as Record<string, unknown>[];
+    for (const r of rows) {
+      lines.push(cols.map((c) => csvCell(c === "phone" ? "+91" + r[c] : r[c])).join(","));
+    }
+    if (rows.length < 1000) break;
+  }
+  return new Response("﻿" + lines.join("\r\n") + "\r\n", {
+    headers: { "Content-Type": "text/csv; charset=utf-8", "Cache-Control": "no-store", ...cors(req) },
+  });
+}
+
+async function adminMemberUpdate(admin: string, body: Record<string, unknown>) {
+  const id = Number(body.id);
+  if (!Number.isInteger(id)) throw new Fail("bad_request", "Missing member id.");
+  const before = must(await db.from("members").select("position, name, dob, city, premium").eq("id", id).maybeSingle());
+  if (!before) throw new Fail("not_found", "That member no longer exists.", 404);
+
+  const patch: Record<string, unknown> = {};
+  if (body.name !== undefined) {
+    const name = str(body.name, 100);
+    if (name.length < 2) throw new Fail("invalid_name", "Name needs at least 2 characters.");
+    patch.name = name;
+  }
+  if (body.city !== undefined) {
+    const city = str(body.city, 80);
+    if (!city) throw new Fail("invalid_city", "City can't be empty.");
+    patch.city = city;
+  }
+  if (body.dob !== undefined) {
+    const dob = str(body.dob, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || isNaN(Date.parse(dob + "T00:00:00Z"))) {
+      throw new Fail("invalid_dob", "Date of birth must be a valid date.");
+    }
+    patch.dob = dob;
+  }
+  if (body.premium !== undefined) patch.premium = body.premium === true;
+
+  const changes = Object.fromEntries(Object.entries(patch)
+    .filter(([k, v]) => String((before as Record<string, unknown>)[k]) !== String(v))
+    .map(([k, v]) => [k, { from: (before as Record<string, unknown>)[k], to: v }]));
+  if (!Object.keys(changes).length) return { ok: true, changed: false };
+
+  must(await db.from("members").update(patch).eq("id", id));
+  await audit(admin, "member.update", `#${before.position}`, changes);
+  return { ok: true, changed: true };
+}
+
+async function adminMemberDelete(admin: string, body: Record<string, unknown>) {
+  const id = Number(body.id);
+  if (!Number.isInteger(id)) throw new Fail("bad_request", "Missing member id.");
+  const m = must(await db.from("members").select("position, phone").eq("id", id).maybeSingle());
+  if (!m) throw new Fail("not_found", "That member no longer exists.", 404);
+  // Everything tied to the number goes, so a deletion request is complete.
+  must(await db.from("members").delete().eq("id", id));
+  must(await db.from("otp_codes").delete().eq("phone", m.phone));
+  must(await db.from("otp_sends").delete().eq("phone", m.phone));
+  must(await db.from("verification_tokens").delete().eq("phone", m.phone));
+  await audit(admin, "member.delete", `#${m.position}`, { phone: maskPhone(m.phone) });
+  return { ok: true };
+}
+
+const INBOX = { enquiries: "brand_enquiries", messages: "contact_messages" } as const;
+type Inbox = keyof typeof INBOX;
+
+async function adminInbox(kind: Inbox, url: URL) {
+  const page = pageOf(url);
+  let q = db.from(INBOX[kind]).select("*", { count: "exact" });
+  const status = url.searchParams.get("status") ?? "";
+  if (STATUSES.has(status)) q = q.eq("status", status);
+  const { data, count, error } = await q.order("created_at", { ascending: false })
+    .range(page * ADMIN_PAGE, page * ADMIN_PAGE + ADMIN_PAGE - 1);
+  if (error) throw new Error(error.message);
+  return { rows: data ?? [], total: count ?? 0, page, pageSize: ADMIN_PAGE };
+}
+
+async function adminInboxUpdate(admin: string, kind: Inbox, body: Record<string, unknown>) {
+  const id = Number(body.id);
+  if (!Number.isInteger(id)) throw new Fail("bad_request", "Missing id.");
+  const patch: Record<string, unknown> = {};
+  if (body.status !== undefined) {
+    if (!STATUSES.has(String(body.status))) throw new Fail("bad_request", "Unknown status.");
+    patch.status = body.status;
+  }
+  if (body.note !== undefined) patch.admin_note = str(body.note, 2000) || null;
+  if (!Object.keys(patch).length) return { ok: true };
+  const rows = must(await db.from(INBOX[kind]).update(patch).eq("id", id).select("id")) as unknown[];
+  if (!rows.length) throw new Fail("not_found", "That item no longer exists.", 404);
+  await audit(admin, `${kind}.update`, `${kind}#${id}`, patch);
+  return { ok: true };
+}
+
+async function adminLog(url: URL) {
+  const page = pageOf(url);
+  const { data, count, error } = await db.from("admin_log").select("*", { count: "exact" })
+    .order("created_at", { ascending: false }).range(page * ADMIN_PAGE, page * ADMIN_PAGE + ADMIN_PAGE - 1);
+  if (error) throw new Error(error.message);
+  return { rows: data ?? [], total: count ?? 0, page, pageSize: ADMIN_PAGE };
+}
+
+async function adminRoute(req: Request, path: string) {
+  const admin = await requireAdmin(req);
+  const url = new URL(req.url);
+  const noStore = { "Cache-Control": "no-store" };
+
+  if (req.method === "GET") {
+    switch (path) {
+      case "/admin/me": return json(req, { email: admin }, 200, noStore);
+      case "/admin/overview": return json(req, await adminOverview(), 200, noStore);
+      case "/admin/members": return json(req, await adminMembers(url), 200, noStore);
+      case "/admin/members/export": return await adminExport(req);
+      case "/admin/enquiries": return json(req, await adminInbox("enquiries", url), 200, noStore);
+      case "/admin/messages": return json(req, await adminInbox("messages", url), 200, noStore);
+      case "/admin/log": return json(req, await adminLog(url), 200, noStore);
+    }
+    throw new Fail("not_found", "Not found.", 404);
+  }
+  if (req.method !== "POST") throw new Fail("not_found", "Not found.", 404);
+  let body: Record<string, unknown>;
+  try { body = await req.json(); } catch { throw new Fail("bad_request", "Send a JSON body.", 400); }
+  if (!body || typeof body !== "object") throw new Fail("bad_request", "Send a JSON body.", 400);
+
+  switch (path) {
+    case "/admin/members/update": return json(req, await adminMemberUpdate(admin, body));
+    case "/admin/members/delete": return json(req, await adminMemberDelete(admin, body));
+    case "/admin/enquiries/update": return json(req, await adminInboxUpdate(admin, "enquiries", body));
+    case "/admin/messages/update": return json(req, await adminInboxUpdate(admin, "messages", body));
+  }
+  throw new Fail("not_found", "Not found.", 404);
+}
+
 /* ------------------------------------------------------------------ router */
 
 Deno.serve(async (req) => {
@@ -364,6 +573,7 @@ Deno.serve(async (req) => {
     if (req.method === "GET" && path === "/stats") {
       return json(req, await stats(), 200, { "Cache-Control": "public, max-age=20" });
     }
+    if (path === "/admin" || path.startsWith("/admin/")) return await adminRoute(req, path);
     if (req.method !== "POST") throw new Fail("not_found", "Not found.", 404);
 
     let body: Record<string, unknown>;

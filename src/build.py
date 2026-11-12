@@ -109,6 +109,10 @@ def build(mode):
     shutil.copytree(ASSETS, os.path.join(out, "assets"), ignore=shutil.ignore_patterns("README.txt"))
     for p in PAGES:
         write(os.path.join(out, out_path(p, mode)), render(p, mode))
+    # Admin panel: a standalone page (no site header/footer), never indexed.
+    with open(os.path.join(HERE, "admin.html"), encoding="utf-8") as f:
+        write(os.path.join(out, "admin", "index.html") if mode == "prod" else os.path.join(out, "admin.html"),
+              resolve(f.read(), mode))
 
     today = date.today().isoformat()
     write(os.path.join(out, "site.webmanifest"), f"""{{
@@ -136,7 +140,7 @@ def build(mode):
         for p in PAGES if not p.get("noindex"))
     write(os.path.join(out, "sitemap.xml"),
           f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{urls}</urlset>\n')
-    write(os.path.join(out, "robots.txt"), f"User-agent: *\nAllow: /\nDisallow: /404.html\n\nSitemap: {SITE}/sitemap.xml\n")
+    write(os.path.join(out, "robots.txt"), f"User-agent: *\nAllow: /\nDisallow: /404.html\nDisallow: /admin/\n\nSitemap: {SITE}/sitemap.xml\n")
 
     # Old URLs from the previous site keep their search ranking.
     redirects = [("/index.html", "/"), ("/privacy.html", "/privacy/"), ("/terms.html", "/terms/")]

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0b0714">
+<title>Turne Admin</title>
+<link rel="icon" href="{{a}}img/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="stylesheet" href="{{a}}css/site.css">
+<link rel="stylesheet" href="{{a}}css/admin.css">
+</head>
+<body class="adm">
+
+<!-- ---------------------------------------------------------------- sign in -->
+<main id="login" class="adm-login" hidden>
+  <form id="login-form" class="panel adm-login__card" novalidate>
+    <img src="{{a}}img/favicon-32.png" alt="" width="32" height="32">
+    <h1>Turne admin</h1>
+    <p>Sign in with your admin account.</p>
+    <div class="form">
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input class="input" id="login-email" type="email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="login-password">Password</label>
+        <input class="input" id="login-password" type="password" autocomplete="current-password" required>
+      </div>
+      <p class="error" id="login-error" role="alert" hidden></p>
+      <button class="btn btn--ticket btn--block" type="submit">Sign in</button>
+    </div>
+  </form>
+</main>
+
+<!-- ---------------------------------------------------------------- app -->
+<div id="app" hidden>
+  <header class="adm-bar">
+    <div class="adm-bar__brand"><img src="{{a}}img/favicon-32.png" alt="" width="24" height="24"><b>Turne admin</b></div>
+    <nav class="adm-tabs" role="tablist" aria-label="Sections">
+      <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
+      <button role="tab" data-tab="members">Members</button>
+      <button role="tab" data-tab="enquiries">Brand enquiries <span class="adm-badge" id="badge-enquiries" hidden></span></button>
+      <button role="tab" data-tab="messages">Messages <span class="adm-badge" id="badge-messages" hidden></span></button>
+      <button role="tab" data-tab="log">Activity</button>
+    </nav>
+    <div class="adm-bar__me"><span id="me-email"></span><button class="adm-link" id="logout" type="button">Sign out</button></div>
+  </header>
+
+  <p class="adm-toast" id="toast" role="status" aria-live="polite" hidden></p>
+
+  <!-- Overview -->
+  <section class="adm-view" id="view-overview" role="tabpanel">
+    <div class="adm-head"><h2>Overview</h2><button class="btn btn--ghost btn--sm" data-refresh="overview" type="button">Refresh</button></div>
+    <div class="adm-tiles" id="ov-tiles"></div>
+    <div class="adm-card">
+      <h3>Sign-ups per day <span class="adm-sub">last 30 days, India time</span></h3>
+      <div class="adm-chart" id="ov-chart"></div>
+      <details class="adm-tableview"><summary>Show as table</summary><div id="ov-chart-table"></div></details>
+    </div>
+    <div class="adm-grid3">
+      <div class="adm-card"><h3>Top cities</h3><div id="ov-cities"></div></div>
+      <div class="adm-card"><h3>Where they came from <span class="adm-sub">utm_source</span></h3><div id="ov-sources"></div></div>
+      <div class="adm-card"><h3>Top referrers</h3><div id="ov-referrers"></div></div>
+    </div>
+  </section>
+
+  <!-- Members -->
+  <section class="adm-view" id="view-members" role="tabpanel" hidden>
+    <div class="adm-head">
+      <h2>Members <span class="adm-sub" id="m-total"></span></h2>
+      <button class="btn btn--ghost btn--sm" id="m-export" type="button">Export CSV</button>
+    </div>
+    <form class="adm-filters" id="m-filters">
+      <input class="input" id="m-q" type="search" placeholder="Search name, phone, city, invite code or #spot" aria-label="Search members">
+      <select class="select" id="m-city" aria-label="City"><option value="">All cities</option></select>
+      <select class="select" id="m-tier" aria-label="Tier">
+        <option value="">All tiers</option><option value="premium">Lifetime Premium</option><option value="member">Member</option>
+      </select>
+      <select class="select" id="m-sort" aria-label="Sort">
+        <option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name A–Z</option>
+      </select>
+    </form>
+    <div class="adm-tablewrap">
+      <table class="adm-table">
+        <thead><tr><th>Spot</th><th>Name</th><th>Phone</th><th>City</th><th>Age</th><th>Tier</th><th>Invite</th><th>Referrals</th><th>Source</th><th>Joined</th></tr></thead>
+        <tbody id="m-rows"></tbody>
+      </table>
+    </div>
+    <div class="adm-pager" id="m-pager"></div>
+  </section>
+
+  <!-- Brand enquiries -->
+  <section class="adm-view" id="view-enquiries" role="tabpanel" hidden>
+    <div class="adm-head">
+      <h2>Brand enquiries <span class="adm-sub" id="e-total"></span></h2>
+      <select class="select adm-status-filter" data-inbox-filter="enquiries" aria-label="Status">
+        <option value="">All</option><option value="new">New</option><option value="in_progress">In progress</option><option value="done">Done</option><option value="spam">Spam</option>
+      </select>
+    </div>
+    <div class="adm-inbox" id="e-rows"></div>
+    <div class="adm-pager" id="e-pager"></div>
+  </section>
+
+  <!-- Messages -->
+  <section class="adm-view" id="view-messages" role="tabpanel" hidden>
+    <div class="adm-head">
+      <h2>Messages <span class="adm-sub" id="c-total"></span></h2>
+      <select class="select adm-status-filter" data-inbox-filter="messages" aria-label="Status">
+        <option value="">All</option><option value="new">New</option><option value="in_progress">In progress</option><option value="done">Done</option><option value="spam">Spam</option>
+      </select>
+    </div>
+    <div class="adm-inbox" id="c-rows"></div>
+    <div class="adm-pager" id="c-pager"></div>
+  </section>
+
+  <!-- Activity -->
+  <section class="adm-view" id="view-log" role="tabpanel" hidden>
+    <div class="adm-head"><h2>Activity <span class="adm-sub">every change made here</span></h2></div>
+    <div class="adm-tablewrap">
+      <table class="adm-table">
+        <thead><tr><th>When</th><th>Who</th><th>What</th><th>Item</th><th>Details</th></tr></thead>
+        <tbody id="l-rows"></tbody>
+      </table>
+    </div>
+    <div class="adm-pager" id="l-pager"></div>
+  </section>
+</div>
+
+<!-- Member drawer -->
+<dialog class="adm-drawer" id="drawer" aria-labelledby="d-title">
+  <form id="d-form" novalidate>
+    <div class="adm-drawer__head">
+      <h2 id="d-title">Member</h2>
+      <button class="adm-link" type="button" id="d-close" aria-label="Close">Close</button>
+    </div>
+    <dl class="adm-facts" id="d-facts"></dl>
+    <div class="form">
+      <div class="field"><label for="d-name">Name</label><input class="input" id="d-name" maxlength="100"></div>
+      <div class="field"><label for="d-dob">Date of birth</label><input class="input" id="d-dob" type="date"></div>
+      <div class="field"><label for="d-city">City</label><input class="input" id="d-city" maxlength="80"></div>
+      <label class="adm-check"><input type="checkbox" id="d-premium"> Lifetime Premium</label>
+      <p class="error" id="d-error" role="alert" hidden></p>
+      <button class="btn btn--ticket btn--block" type="submit">Save changes</button>
+    </div>
+    <div class="adm-danger">
+      <h3>Delete member</h3>
+      <p>Removes the entry and every code sent to this number. Use it for deletion requests. Their spot number isn't reused.</p>
+      <button class="btn btn--ghost btn--sm adm-btn-danger" type="button" id="d-delete">Delete this member</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="adm-tip" id="tip" role="tooltip" hidden></div>
+
+<script src="{{a}}js/config.js"></script>
+<script src="{{a}}js/admin.js"></script>
+</body>
+</html>

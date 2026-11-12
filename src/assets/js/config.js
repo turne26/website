@@ -10,6 +10,10 @@
  */
 window.TURNE_CONFIG = {
   apiBase: "https://tgnrnjnuemnjvancelyo.supabase.co/functions/v1/api",
+  // Supabase Auth for the /admin/ sign-in. The publishable key is meant to be public: the
+  // database grants it nothing, and every admin call is checked by the api function.
+  supabaseUrl: "https://tgnrnjnuemnjvancelyo.supabase.co",
+  supabaseKey: "sb_publishable_2apziPEw2O-azDBFNEQhSQ_90hyvAtx",
   launchAt: "2027-01-26T10:00:00+05:30",
   premiumLimit: 10000,
   siteUrl: "https://turne.in",
