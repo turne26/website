@@ -411,6 +411,9 @@ p { margin: 0; }
 .foot__mail:hover, .foot__legal a:hover { color: var(--lime); }
 .foot__legal { display: flex; gap: 2rem; margin-left: auto; }
 .foot__legal a { text-decoration: none; font-size: .92rem; color: #d9d4ea; }
+.foot__company { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); text-align: center; }
+.foot__company p { font-size: .82rem; color: var(--muted); letter-spacing: .02em; }
+.foot__company strong { color: #d9d4ea; font-weight: 700; letter-spacing: .06em; }
 @media (max-width: 860px) {
   .foot { flex-direction: column; text-align: center; gap: 1rem; }
   .foot__brand { flex-direction: column; gap: .75rem; border: 0; padding: 0; }

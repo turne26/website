@@ -200,6 +200,7 @@ def footer(page):
     <a class="foot__mail" href="mailto:support@turne.in">{mail}support@turne.in</a>
     <nav class="foot__legal" aria-label="Legal"><a href="{{{{u:privacy}}}}">Privacy Policy</a><a href="{{{{u:terms}}}}">Terms of Use</a></nav>
   </div>
+  <div class="wrap foot__company"><p>Turne is a product of <strong>NR ENTERPRISES</strong></p></div>
 </footer>{sticky}"""
 
 
