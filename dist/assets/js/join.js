@@ -201,12 +201,12 @@
     $all("[data-done-position]").forEach(function (el) { el.textContent = "#" + pos; });
     var premium = !!entry.premium;
     $("#done-ticket").classList.toggle("ticket--premium", premium);
-    $("#done-tier").textContent = premium ? "Lifetime Premium" : "Member";
+    $("#done-tier").textContent = premium ? "2-Year Premium" : "Member";
     $("#done-premium").hidden = !premium;
     $("#done-standard").hidden = premium;
     var invite = (cfg.siteUrl || location.origin) + "/?ref=" + encodeURIComponent(entry.inviteCode || "");
     $("#invite-link").value = invite;
-    var msg = "I just joined the Turne waitlist. The first 10,000 get Lifetime Premium. Get your spot: " + invite;
+    var msg = "I just joined the Turne waitlist. The first 10,000 get 2 years of Premium free. Get your spot: " + invite;
     $("#share-wa").href = "https://wa.me/?text=" + encodeURIComponent(msg);
     show("done");
   }

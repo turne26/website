@@ -1,7 +1,7 @@
 /*
- * Turne API: the backend behind src/assets/js/api.js.
+ * Turne API: the backend behind lib/api.ts.
  * Served at https://<project>.supabase.co/functions/v1/api, which is what apiBase in
- * config.js points to. Endpoint contract: README.md ("Backend integration").
+ * lib/config.ts points to. Endpoint contract: README.md ("Backend integration").
  *
  * Secrets (supabase secrets set NAME=value):
  *   OTP_MODE            "test" (default: every code is 123456, nothing is sent) or "whatsapp"
@@ -17,8 +17,8 @@
  *   OTP_PEPPER          Random secret mixed into stored code hashes
  *   ADMIN_EMAILS        Comma-separated emails allowed into the /admin/ panel (Supabase Auth users)
  *   ALLOWED_ORIGINS     Comma-separated extra origins allowed by CORS
- *   LAUNCH_AT           ISO launch moment for the countdown; omit to use config.js
- *   PREMIUM_LIMIT       Lifetime Premium spots (default 10000)
+ *   LAUNCH_AT           ISO launch moment for the countdown; omit to use lib/config.ts
+ *   PREMIUM_LIMIT       2-Year Premium spots (default 10000)
  *   MIN_AGE             Minimum age to join (default 13)
  * SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase automatically.
  */

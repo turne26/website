@@ -208,7 +208,7 @@ def crumbs(label):
     return f'<nav class="crumbs" aria-label="Breadcrumb"><a href="{{{{u:}}}}">Home</a><span aria-hidden="true">/</span><span aria-current="page">{label}</span></nav>'
 
 
-def ticket(title="Lifetime Premium pass", variant=""):
+def ticket(title="2-Year Premium pass", variant=""):
     cls = "ticket" + (" ticket--premium" if variant == "premium" else "")
     return f"""<div class="{cls}" role="img" aria-label="Your next waitlist spot is number {NEXT}">
   <div class="ticket__main">
@@ -217,7 +217,7 @@ def ticket(title="Lifetime Premium pass", variant=""):
     <dl class="ticket__rows">
       <div><dt>Next spot</dt><dd>#{stat("next")}</dd></div>
       <div><dt>Spots left</dt><dd>{stat("remaining")}</dd></div>
-      <div><dt>Valid for</dt><dd>Life</dd></div>
+      <div><dt>Valid for</dt><dd>2 years</dd></div>
     </dl>
     <div class="ticket__barcode" aria-hidden="true"></div>
   </div>
@@ -235,8 +235,8 @@ def gate(heading="Through the gate so far"):
     </div>
   </div>
   <div>
-    <p class="small" style="font-weight:600;margin-bottom:.9rem">Lifetime Premium spots</p>
-    <div class="ticks" data-ticks data-cells="50" role="img" aria-label="{COUNT} of {LIMIT_S} Lifetime Premium spots claimed"></div>
+    <p class="small" style="font-weight:600;margin-bottom:.9rem">2-Year Premium spots</p>
+    <div class="ticks" data-ticks data-cells="50" role="img" aria-label="{COUNT} of {LIMIT_S} 2-Year Premium spots claimed"></div>
     <div class="ticks-key"><span><strong>{stat("count")}</strong> claimed ({stat("percent")})</span><span><strong>{stat("remaining")}</strong> left</span><span>Each block is 200 spots</span></div>
   </div>
 </div>"""
@@ -252,7 +252,7 @@ def countdown():
 
 
 def closer(heading="Get in before everyone else.", lede=None):
-    lede = lede or f"Only {stat('remaining')} Lifetime Premium spots are left, and the countdown doesn't stop."
+    lede = lede or f"Only {stat('remaining')} 2-Year Premium spots are left, and the countdown doesn't stop."
     return f"""<section class="band closer" data-hide-sticky aria-labelledby="closer-h">
   <div class="wrap closer-grid">
     <div class="stack">

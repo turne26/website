@@ -15,8 +15,8 @@ def page(**kw):
 page(
     slug="", crumb="Home", og="home",
     title="Turne | India ka Apna Event Platform",
-    desc="Join live online events from top brands, attend exclusive launches and win giveaways. The first 10,000 on the Turne waitlist get Lifetime Premium.",
-    og_desc="Discover and join live online events from top brands, attend launches and win giveaways. The first 10,000 get Lifetime Premium.",
+    desc="Join live online events from top brands, attend exclusive launches and win giveaways. The first 10,000 on the Turne waitlist get 2 years of Premium free.",
+    og_desc="Discover and join live online events from top brands, attend launches and win giveaways. The first 10,000 get 2 years of Premium free.",
     body=HOME_BODY,
 )
 
@@ -169,15 +169,15 @@ page(
 # ---------------------------------------------------------------- PREMIUM
 page(
     slug="premium", crumb="Premium", og="premium",
-    title="Turne Premium | The First 10,000 Get It Free for Life",
-    desc="Be one of the first 10,000 verified waitlist members and get Turne Premium for life: a dedicated 50% giveaway share, early access and priority.",
+    title="Turne Premium | The First 10,000 Get 2 Years Free",
+    desc="Be one of the first 10,000 verified waitlist members and get 2 years of Turne Premium free: a dedicated 50% giveaway share, early access and priority.",
     body=f"""
 <section class="hero" data-hero aria-labelledby="prem-h">
   <div class="wrap hero-grid">
     <div>
       {crumbs("Premium")}
-      <h1 id="prem-h" style="font-size:clamp(2.34rem,6.3vw,5.10rem)">The first <span class="hl-v">10,000</span> get Premium for life.</h1>
-      <p class="lede">Be one of the first 10,000 verified members and get Turne Premium for life. No renewal, no catch. You were early.</p>
+      <h1 id="prem-h" style="font-size:clamp(2.34rem,6.3vw,5.10rem)">The first <span class="hl-v">10,000</span> get 2 years of Premium.</h1>
+      <p class="lede">Be one of the first 10,000 verified members and get two years of Turne Premium, free from launch day. No payment, no catch. You were early.</p>
       <div class="cta-row"><a class="btn btn--ticket" href="{{{{u:join}}}}">Claim my spot</a><span class="small muted">{stat("remaining")} spots left</span></div>
     </div>
     {ticket(variant="premium")}
@@ -195,7 +195,7 @@ page(
       <p class="fine">Premium benefits may evolve as Turne launches. Premium does not guarantee winning any giveaway.</p>
     </div>
     <ul class="benefits">
-      <li>{icon("check")}<div><b>Lifetime Premium membership</b><span>No renewal, no catch. You were early.</span></div></li>
+      <li>{icon("check")}<div><b>2 years of Premium membership</b><span>Free for 24 months from launch day. No payment, no catch.</span></div></li>
       <li>{icon("check")}<div><b>The Premium 50% giveaway share</b><span>Access to a dedicated half of selected giveaway opportunities.</span></div></li>
       <li>{icon("check")}<div><b>Early access to selected experiences</b><span>Through the door before general access opens.</span></div></li>
       <li>{icon("check")}<div><b>Priority on new opportunities</b><span>As Turne grows, Premium members are first in line.</span></div></li>
@@ -222,7 +222,7 @@ page(
     <div class="section-head"><h2 id="fine-h">The fine print, plainly</h2></div>
     <ul class="rows">
       <li><h3>Who qualifies</h3><p>The first 10,000 verified waitlist members, in the order their WhatsApp number is verified. The offer closes at 10,000.</p><span class="tag">Terms B1</span></li>
-      <li><h3>"Lifetime"</h3><p>For as long as Turne runs the Premium tier and your membership is in good standing.</p><span class="tag">Terms B2</span></li>
+      <li><h3>2 years</h3><p>Premium runs for 24 months from the day Turne launches, while your membership is in good standing.</p><span class="tag">Terms B2</span></li>
       <li><h3>Just for you</h3><p>Premium is tied to your verified number. It can't be sold, gifted or transferred.</p><span class="tag">Terms B4</span></li>
       <li><h3>Fair use</h3><p>Premium obtained through fraud, automation or duplicate sign-ups can be withdrawn.</p><span class="tag">Terms B5</span></li>
     </ul>
@@ -325,7 +325,7 @@ FAQ_GROUPS = [
     ]),
     ("The waitlist", [
         ("How do I join?", "Verify your mobile number with the 6-digit code we send on WhatsApp, add your name, date of birth and city, then tap Join the waitlist. It takes well under a minute."),
-        ("What do I get for joining?", "The first 10,000 verified waitlist members receive Lifetime Premium membership."),
+        ("What do I get for joining?", "The first 10,000 verified waitlist members receive 2 years of Premium membership, free from launch day."),
         ("Can I register more than one number?", "Each mobile number can hold one waitlist entry. If you register the same number again, you'll see your existing spot."),
         ("Will you share my number with brands?", "No. We don't sell your personal information, and we don't share your phone number with brands or advertisers. See our <a href=\"{{u:privacy}}\">privacy policy</a>."),
         ("How do I stop WhatsApp messages?", "Reply STOP to any message from us, or email privacy@turne.in. Withdrawing consent may mean we can't keep your waitlist entry or Premium eligibility active."),
@@ -347,7 +347,7 @@ _faq_html = "\n".join(
 page(
     slug="faq", crumb="FAQ", og="faq", faq=_faq_flat,
     title="Turne FAQ | Waitlist, Premium, Giveaways and Launch",
-    desc="Answers about Turne: what it is, when it launches, how to join the waitlist, what Lifetime Premium includes, how giveaways work and which cities can join.",
+    desc="Answers about Turne: what it is, when it launches, how to join the waitlist, what 2-Year Premium includes, how giveaways work and which cities can join.",
     body=f"""
 <section class="page-hero" data-hero>
   <div class="wrap">
@@ -433,18 +433,17 @@ _city_opts = "".join(f"<option>{c}</option>" for c in [
 
 page(
     slug="join", crumb="Join the waitlist", og="join", no_sticky=True, scripts=["join.js"],
-    title="Join the Turne Waitlist | First 10,000 Get Lifetime Premium",
-    desc="Join the Turne waitlist in under a minute with your mobile number. The first 10,000 verified members get Lifetime Premium.",
+    title="Join the Turne Waitlist | First 10,000 Get 2 Years of Premium",
+    desc="Join the Turne waitlist in under a minute with your mobile number. The first 10,000 verified members get 2 years of Premium free.",
     body=f"""
 <section class="band" style="padding-top:clamp(2.5rem,6vw,4.5rem)">
   <div class="wrap join">
     <div class="stack-lg">
-      {crumbs("Join the waitlist")}
       <h1 style="font-size:clamp(2.16rem,5.6vw,4.42rem)">Join the waitlist.</h1>
-      <p class="lede">It takes under a minute. The first 10,000 verified members get Lifetime Premium.</p>
+      <p class="lede">It takes under a minute. The first 10,000 verified members get 2 years of Premium free.</p>
       {ticket()}
       <div>
-        <div class="ticks" data-ticks data-cells="50" role="img" aria-label="Lifetime Premium spots claimed"></div>
+        <div class="ticks" data-ticks data-cells="50" role="img" aria-label="2-Year Premium spots claimed"></div>
         <div class="ticks-key"><span><strong>{stat("count")}</strong> claimed</span><span><strong>{stat("remaining")}</strong> Premium spots left</span></div>
       </div>
     </div>
@@ -519,7 +518,7 @@ page(
           <div class="ticket" id="done-ticket" style="justify-self:start;transform:rotate(-1.5deg)">
             <div class="ticket__main">
               <div class="ticket__brand"><b>TURNE</b><span>Waitlist</span></div>
-              <div class="ticket__title" id="done-tier">Lifetime Premium</div>
+              <div class="ticket__title" id="done-tier">2-Year Premium</div>
               <dl class="ticket__rows">
                 <div><dt>Your spot</dt><dd data-done-position>#0</dd></div>
                 <div><dt>Status</dt><dd>Verified</dd></div>
@@ -529,7 +528,7 @@ page(
             </div>
             <div class="ticket__stub" aria-hidden="true"><span data-done-position>#0</span></div>
           </div>
-          <p id="done-premium" class="notice notice--ok">Lifetime Premium unlocked. You made the first 10,000.</p>
+          <p id="done-premium" class="notice notice--ok">2-Year Premium unlocked. You made the first 10,000.</p>
           <p id="done-standard" class="notice" hidden>The 10,000 Premium spots are taken, but you're on the list and will be first through the door at launch.</p>
           <div class="stack">
             <p style="font-weight:600">Bring your people in too. Spots are going.</p>

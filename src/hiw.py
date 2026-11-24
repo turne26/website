@@ -334,7 +334,7 @@ BODY = f"""
 <section class="wrap w-sec w-end" data-hide-sticky aria-labelledby="end-h">
   <div class="h-panel w-endpanel">
     <h2 id="end-h">Your spot on the <span class="g-violet">expo floor</span> is waiting.</h2>
-    <p>The first 10,000 people on the waitlist get Lifetime Premium.</p>
+    <p>The first 10,000 people on the waitlist get 2 years of Premium free.</p>
     <a class="pill pill--lime pill--lg" href="{{{{u:join}}}}">Join the Waitlist {ARROW}</a>
   </div>
 </section>

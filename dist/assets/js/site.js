@@ -73,7 +73,7 @@
     var on = Math.min(cells, Math.ceil(value / per));
     if (!el.children.length) { for (var i = 0; i < cells; i++) el.appendChild(document.createElement("i")); }
     $all("i", el).forEach(function (c, i) { c.className = i < on ? "on" : ""; });
-    el.setAttribute("aria-label", fmt.format(value) + " of " + fmt.format(LIMIT) + " Lifetime Premium spots claimed");
+    el.setAttribute("aria-label", fmt.format(value) + " of " + fmt.format(LIMIT) + " 2-Year Premium spots claimed");
   }
 
   /* ---------- live stats ---------- */

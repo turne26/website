@@ -17,11 +17,11 @@ OG = {
     "why-turne": ("Brands shouldn't just<br>be <span>seen.</span>", "They should be experienced."),
     "how-it-works": ("A room for<br><span>every startup.</span>", "Brands host. Startups showcase. You take part."),
     "giveaways": ("Real rewards.<br><span>Real participation.</span>", "Free to enter. Fair 50/50 split."),
-    "premium": ("The first 10,000 get<br><span>Premium for life.</span>", "Join the waitlist. Claim your spot."),
+    "premium": ("The first 10,000 get<br><span>2 years of Premium.</span>", "Join the waitlist. Claim your spot."),
     "brands": ("For brands, it's more<br>than an <span>event.</span>", "Create it. Fill the room. Measure who showed up."),
     "faq": ("The <span>details.</span>", "Waitlist, Premium, giveaways and launch."),
     "contact": ("Get in <span>touch.</span>", "hello@turne.in"),
-    "join": ("Join the<br><span>waitlist.</span>", "The first 10,000 get Lifetime Premium."),
+    "join": ("Join the<br><span>waitlist.</span>", "The first 10,000 get 2 years of Premium."),
 }
 
 

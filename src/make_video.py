@@ -64,7 +64,7 @@ def write_pages():
 <div class="stub"><b>ADMIT ONE</b></div></div>""")
     outro = page(f"""<div class="card">{logo()}<h1>Get in before<br><span class="hl-m">everyone else.</span></h1>
 <span class="pill">Join at turne.in</span>
-<p>The first 10,000 people on the waitlist get Lifetime Premium.</p>
+<p>The first 10,000 people on the waitlist get 2 years of Premium free.</p>
 <div class="stub"><b>ADMIT ONE</b></div></div>""")
     for name, html in (("film.html", film), ("intro.html", intro), ("outro.html", outro)):
         with open(os.path.join(WORK, name), "w", encoding="utf-8") as f:

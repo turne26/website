@@ -89,7 +89,7 @@ def _laurel(side):
 
 
 def art_crown():
-    return f"""<svg class="h-crown" viewBox="0 0 260 200" role="img" aria-label="Premium Lifetime crown"><defs>
+    return f"""<svg class="h-crown" viewBox="0 0 260 200" role="img" aria-label="2-Year Premium crown"><defs>
 <linearGradient id="cr-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a3"/><stop offset=".45" stop-color="#f6b93b"/><stop offset="1" stop-color="#c7781a"/></linearGradient>
 <linearGradient id="cr-ped" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1d45"/><stop offset="1" stop-color="#140d24"/></linearGradient>
 <filter id="cr-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter></defs>
@@ -104,7 +104,7 @@ def art_crown():
 <ellipse cx="130" cy="126" rx="76" ry="7" fill="#33245a" stroke="#7c5cd6" stroke-width="1"/>
 <path d="M64 180h132" stroke="#c9a8ff" stroke-width="2.2" stroke-linecap="round"/>
 <text x="130" y="152" text-anchor="middle" font-size="17" font-weight="800" fill="#fff" letter-spacing="1">PREMIUM</text>
-<text x="130" y="169" text-anchor="middle" font-size="10.5" font-weight="600" fill="#d9ccff" letter-spacing="3.5">LIFETIME</text>
+<text x="130" y="169" text-anchor="middle" font-size="10.5" font-weight="600" fill="#d9ccff" letter-spacing="3.5">2 YEARS</text>
 </svg>"""
 
 
@@ -158,7 +158,7 @@ def event_cards():
 FAQ = [
     ("What is Turne?", "Turne is a digital event and brand engagement platform where you discover events, participate in experiences, enter giveaways and connect with brands."),
     ("When is Turne launching?", "Turne is preparing for launch. The countdown on this page shows the planned launch timeline. Join the waitlist and you'll be first through the door."),
-    ("What do I get for joining?", "The first 10,000 verified waitlist members receive Lifetime Premium membership."),
+    ("What do I get for joining?", "The first 10,000 verified waitlist members receive 2 years of Premium membership, free from launch day."),
     ("What is Premium?", "Premium is Turne's membership experience: additional benefits and access to selected opportunities. Premium benefits may evolve as Turne launches."),
     ("Do Premium members automatically win giveaways?", "No. Premium does not guarantee winning. It provides access to the Premium allocation, a dedicated 50% share, of selected giveaway opportunities."),
 ]
@@ -212,15 +212,15 @@ BODY = f"""
     <div class="h-prem__crown">{art_crown()}</div>
     <div class="h-prem__copy">
       <p class="h-offer"><span aria-hidden="true">&#127881;</span>Founding Members Offer</p>
-      <h2 id="prem-h">First 10,000 Waitlist Users Get <span class="g-violet">Lifetime Premium Membership</span></h2>
-      <p>Be early, unlock premium benefits for life, and get higher chances to win in every event.</p>
+      <h2 id="prem-h">First 10,000 Waitlist Users Get <span class="g-violet">2 Years of Premium Membership</span></h2>
+      <p>Be early, unlock 2 years of premium benefits for free, and get higher chances to win in every event.</p>
     </div>
     <ul class="h-prem__list">
       <li>{tile("gift")}<div><b>Higher Chances to Win</b><span>50% of every giveaway is reserved for Premium users (50% for normal users)</span></div></li>
       <li>{tile("star")}<div><b>Early Access to Big Events</b><span>Be the first to join exclusive events from top &amp; premium brands</span></div></li>
       <li>{tile("gem")}<div><b>Specialised Premium Events</b><span>Access to curated events, workshops and brand sessions only for Premium users</span></div></li>
     </ul>
-    <a class="pill pill--lime h-prem__cta" href="{{{{u:join}}}}">Get Lifetime Premium for Free {ARROW}</a>
+    <a class="pill pill--lime h-prem__cta" href="{{{{u:join}}}}">Get 2 Years of Premium Free {ARROW}</a>
   </div>
 </section>
 

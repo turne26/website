@@ -1,78 +1,78 @@
 # Turne website
 
-Static, multi-page site for turne.in. Plain HTML, CSS and vanilla JS with no framework and no build dependencies beyond Python 3. It deploys to any static host (Vercel, Netlify, Cloudflare Pages, S3, Nginx).
+The turne.in site, built with **Next.js (App Router, TypeScript)**. Every page is pre-rendered to static HTML at build time, so it loads fast and search engines and AI crawlers see the full content in the page source. It deploys on Vercel (`vercel.json` sets the framework to Next.js).
 
 ```
-src/
-  build.py        builds dist/ (production) and preview/ (flat files for previewing)
-  layout.py       <head>/SEO, header, footer, shared components, social links
-  home.py         Home page (event cards, Premium offer, countdown, quick FAQ; inline SVG art)
-  pages.py        Why Turne, How it works, Giveaways, Premium, Brands, FAQ, Contact, Join
-  legal.py        Privacy, Terms, 404
-  gen_images.py   renders share images (assets/og/*.png) and app icons
-  make_logo.py    cuts the logo out of brand/turne-logo.jpg into transparent PNGs
-  brand/          logo artwork and large cut-outs (not deployed)
-  make_video.py   renders video/turne-explainer.mp4 from the site animation
-  assets/
-    css/site.css
-    js/config.js  <- the only file to edit when connecting the backend
-    js/api.js     every network call lives here (with a mock mode)
-    js/site.js    menu, live counters, countdown, UTM/referral capture
-    js/join.js    WhatsApp OTP signup flow
-    js/forms.js   brand enquiry + contact forms
-    js/explainer.js  the 3D "How a Turne event works" animation (How it works)
-    fonts/        self-hosted Plus Jakarta Sans (woff2)
-dist/             production output: deploy this folder
+app/                    routes: one folder per page (page.tsx = metadata + JSON-LD + content)
+  layout.tsx            <html>, fonts (next/font), header, footer, live stats provider
+  globals.css           all site styles (colour tokens at the top)
+  sitemap.ts robots.ts manifest.ts      sitemap.xml, robots.txt, manifest.webmanifest
+  llms.txt/ llms-full.txt/              plain-text briefings for AI assistants (GEO)
+  not-found.tsx         404 page
+content/                the body of each page (JSX). Edit copy here.
+components/
+  Header, Footer, Logo, StickyJoin      site chrome
+  live.tsx              live waitlist count, tally, Premium spot grid, countdown (reads GET /stats)
+  JsonLd.tsx            schema.org structured data
+  PageScripts.tsx       starts a page's interactive scripts and stops them on navigation
+lib/
+  config.ts             API URL, launch date, Premium limit, cities: the main settings file
+  pages.ts              every page's title, description, share image, breadcrumb and FAQ
+  seo.ts                builds <head> metadata and JSON-LD from pages.ts
+  llms.ts               builds llms.txt / llms-full.txt from the same data
+  api.ts                every network call (with a mock mode when apiBase is empty)
+  scripts/              join flow, contact/brand forms, home carousel, explainer and How-it-works animations
+public/
+  assets/img, og/       logo, icons, 1200x630 share images
+  admin/                the /admin/ panel (standalone page; reads public/assets/js/config.js)
+brand/                  logo artwork (not deployed)
+supabase/               backend: database migrations + the api Edge Function
 ```
+
+## Develop and deploy
+
+```bash
+npm install
+npm run dev        # http://localhost:3000
+npm run build      # production build; fails on type errors
+```
+
+Push to `main` and Vercel builds and deploys it. URLs keep the trailing slash (`/premium/`) the site has always used, and `/privacy.html`, `/terms.html`, `/index.html` and `/site.webmanifest` 301-redirect to their new homes, so existing links and rankings carry over.
+
+To change copy, edit the page in `content/`. To change a title, description or FAQ answer that search engines see, edit `lib/pages.ts` (the FAQ answers there feed the FAQ schema and llms.txt, so keep them matching the page).
 
 ## Look and feel
 
-Near-black base (`--night #07070c`), electric violet as the brand colour (`--violet #8b6cff`, used for Premium and highlights) and neon lime as the one action colour (`--lime #c6ff3d`, used for buttons and live states). Everything is set in Plus Jakarta Sans. All colours are tokens at the top of `assets/css/site.css`.
-
-## Explainer animation and video
-
-`explainer()` in `src/layout.py` is a 25-second 3D phone animation in five scenes: a brand hosts an event, every startup gets a room, you explore a room, you take part, you win. Visitors can click any step, pause it, and it respects reduced-motion settings. It only runs while on screen. Startup and brand names in it are made up.
-
-`python3 src/make_video.py` films that same animation frame by frame into `video/turne-explainer.mp4` (1920x1080, 30 fps, about 32 s, silent), with an intro and an end card. Re-run it after changing the animation so the video stays in sync.
-
-## Build and deploy
-
-```bash
-python3 src/build.py          # rebuild dist/ and preview/
-python3 src/make_logo.py      # only if the logo artwork in src/brand/ changes, then run gen_images.py
-python3 src/gen_images.py     # only if you change share-image headlines (needs: pip install playwright && playwright install chromium)
-```
-
-Deploy `dist/`. URLs are clean (`/premium/`, `/faq/`). `dist/_redirects` (Netlify, Cloudflare) and `dist/vercel.json` 301-redirect the old `/privacy.html` and `/terms.html`, so existing links and rankings carry over. `.htaccess` does the same on Apache.
-
-On Vercel, import the repo with the default settings: the root `vercel.json` (also written by `build.py`) tells Vercel to skip the build and serve the committed `dist/` folder. Rebuild and push `dist/` after every change.
+Near-black base (`--night #07070c`), electric violet as the brand colour (`--violet #8b6cff`, used for Premium and highlights) and neon lime as the one action colour (`--lime #c6ff3d`, used for buttons and live states). Everything is set in Plus Jakarta Sans, self-hosted through `next/font`. All colours are tokens at the top of `app/globals.css`.
 
 ## Pages
 
 | URL | Page | Notes |
 | --- | --- | --- |
-| `/` | Home | Built in `src/home.py`: hero with example event cards, giveaways strip, Premium offer, countdown, quick FAQ |
+| `/` | Home | Hero with example event cards, giveaways strip, Premium offer, countdown, quick FAQ |
 | `/why-turne/` | Why Turne | Today vs With Turne, the Turne loop |
-| `/how-it-works/` | How it works | Discover, Participate, Win, Connect, Experience |
+| `/how-it-works/` | How it works | Live expo floor, inside a pod, the 3D "How a Turne event works" explainer |
 | `/giveaways/` | Giveaways | Prize types, 50/50 split, giveaway rules |
-| `/premium/` | Premium | First-10,000 offer, live spots, benefits, fine print |
+| `/premium/` | Premium | First-10,000 offer (2 years free), live spots, benefits, fine print |
 | `/brands/` | For brands | Capabilities and enquiry form |
-| `/faq/` | FAQ | 12 questions, FAQPage schema |
+| `/faq/` | FAQ | FAQPage schema |
 | `/contact/` | Contact | Three inboxes and a contact form |
 | `/join/` | Join the waitlist | 4-step WhatsApp OTP signup |
-| `/privacy/`, `/terms/` | Legal | Full text from the current site |
-| `/404.html` | Not found | `noindex` |
+| `/privacy/`, `/terms/` | Legal | |
+| `/admin/` | Admin panel | `noindex`, blocked in robots.txt |
 
-## SEO included
+## SEO and GEO
 
-- A unique `<title>` (60 characters or fewer) and meta description (160 or fewer) on every page, plus one H1 per page
-- Canonical URLs, `hreflang="en-IN"`, Open Graph and Twitter cards with a per-page 1200×630 share image
-- JSON-LD on every page: Organization + WebSite (home), WebPage + BreadcrumbList (inner pages), FAQPage (FAQ)
-- `sitemap.xml`, `robots.txt`, `site.webmanifest`, favicons and app icons
-- Server-rendered HTML: all content is in the page source, not injected by JS
-- Self-hosted fonts with preload and `font-display: swap`, no third-party requests
+Search engines (Google, Bing) and generative engines (ChatGPT search, Perplexity, Gemini, Copilot, Claude) read the same things, so both are covered in one place, `lib/seo.ts`:
 
-After launch, submit `https://turne.in/sitemap.xml` in Google Search Console.
+- A unique title and description on every page, one H1 per page, all content in the server-rendered HTML
+- Canonical URLs with trailing slash, `hreflang` en-IN + x-default, Open Graph and Twitter cards with a per-page 1200x630 image
+- JSON-LD on every page: Organization (with contact points, area served, parent company), WebSite, WebPage with `dateModified`, BreadcrumbList; FAQPage on Home and FAQ; the 2-year Premium Offer on Home, Premium and Join
+- `sitemap.xml` (with share images), `robots.txt` that explicitly allows the main AI crawlers (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended and others) and blocks `/admin/`
+- `/llms.txt` and `/llms-full.txt`: a factual briefing on Turne with every FAQ answer and a link to each page, generated from the same data as the site
+- Self-hosted fonts with size-matched fallbacks (less layout shift), static pages served from Vercel's edge (fast Core Web Vitals)
+
+After launch: submit `https://turne.in/sitemap.xml` in Google Search Console and Bing Webmaster Tools (Bing also feeds ChatGPT and Copilot search).
 
 ## Backend (Supabase)
 
@@ -93,7 +93,7 @@ supabase db push                          # creates the tables
 supabase functions deploy api --no-verify-jwt
 ```
 
-Then set `apiBase` in `src/assets/js/config.js` to `https://<ref>.supabase.co/functions/v1/api`, run `python3 src/build.py` and push.
+Then set `apiBase` in `lib/config.ts` and `public/assets/js/config.js` to `https://<ref>.supabase.co/functions/v1/api` and push.
 
 The function starts in **test mode**: no message is sent, the code is always `123456`, and the site shows the test-code hint. Real codes go out on **WhatsApp through Meta's Cloud API**: the function generates a random 6-digit code, stores only its hash, and sends it with an approved Authentication template.
 
@@ -123,7 +123,7 @@ Signups, brand enquiries and contact messages are in the Table Editor (`members`
 
 ## Backend integration
 
-Set `apiBase` in `assets/js/config.js` (for example `"https://api.turne.in/v1"`). While it's empty the site runs in **mock mode**: nothing leaves the browser and OTP `123456` is accepted. That's how the preview works.
+Set `apiBase` in `lib/config.ts` (and `public/assets/js/config.js` for the admin panel) (for example `"https://api.turne.in/v1"`). While it's empty the site runs in **mock mode**: nothing leaves the browser and OTP `123456` is accepted. That's how the preview works.
 
 All requests are JSON with `credentials: "include"`. Allow CORS from `https://turne.in` if the API is on another origin. Errors should return a non-2xx status with:
 
@@ -168,7 +168,7 @@ Feeds every live number on the site (tally, spots left, % claimed, countdown). I
 
 - `company` is a honeypot. If it isn't empty, it's a bot: return a normal-looking 200 and don't save.
 - Assign `position` in verification order. Set `premium` = position ≤ 10,000 (Terms B1).
-- Enforce the minimum age server-side too (`minAge` in config.js, currently 13).
+- Enforce the minimum age server-side too (`minAge` in lib/config.ts, currently 13).
 - `ref` is the inviter's `inviteCode` from `/?ref=CODE` links; use it for referral tracking.
 - `city` is free text when someone picks "Other city".
 - Error code `token_invalid` sends the person back to step 1.
@@ -181,8 +181,8 @@ Feeds every live number on the site (tally, spots left, % claimed, countdown). I
 
 ## Before going live
 
-- [ ] Set `apiBase` and the real `launchAt` in `assets/js/config.js` (the current launch date is a placeholder)
-- [ ] Fill the highlighted legal placeholders in `src/legal.py`: entity name, registered address, last-updated date, minimum age, OTP retention days, response days, winner reply days, jurisdiction city
-- [ ] Add Instagram and LinkedIn profile URLs in `SOCIAL` in `src/layout.py` (links stay hidden until set)
-- [ ] Update `FALLBACK_COUNT` in `src/layout.py` so the page source shows a recent number before JS loads
-- [ ] Add your analytics snippet in `head()` in `src/layout.py` if you use one (the Privacy policy §9 already covers it)
+- [ ] Set the real `launchAt` in `lib/config.ts` (the current launch date is a placeholder; it also appears in llms.txt)
+- [ ] Fill the highlighted legal placeholders in `content/privacy.tsx` and `content/terms.tsx`: entity name, registered address, last-updated date, minimum age, OTP retention days, response days, winner reply days, jurisdiction city
+- [ ] Add Instagram and LinkedIn profile URLs in `SOCIAL` in `lib/seo.ts` (they become `sameAs` links in the Organization schema)
+- [ ] Update `fallbackStats` in `lib/config.ts` so the page source shows a recent number before JS loads
+- [ ] Add analytics in `app/layout.tsx` if you use it (the Privacy policy §9 already covers it)

@@ -67,7 +67,7 @@ legal_page(
 <ul>
 <li>To verify your mobile number by a one-time password (OTP) sent on WhatsApp.</li>
 <li>To create and maintain your waitlist entry and position.</li>
-<li>To determine whether you qualify for Lifetime Premium as one of the first 10,000 verified members.</li>
+<li>To determine whether you qualify for 2-Year Premium as one of the first 10,000 verified members.</li>
 <li>To send you WhatsApp messages about the Turne launch, your waitlist spot and your Premium status.</li>
 <li>To understand, in aggregate, which marketing channels bring people to Turne.</li>
 <li>To detect and prevent spam, abuse and fraudulent registrations.</li>
@@ -88,7 +88,7 @@ legal_page(
 <p>We may also disclose information where we are legally required to do so, or where it is necessary to protect our rights, safety or property.</p>
 
 <h2 id="p5">5. How long we keep it</h2>
-<p>We keep your waitlist record for as long as your entry is active, and afterwards for as long as reasonably necessary to honour your Lifetime Premium eligibility or to comply with our legal obligations. One-time password records are deleted within {ph("7")} days. You can ask us to delete your record at any time.</p>
+<p>We keep your waitlist record for as long as your entry is active, and afterwards for as long as reasonably necessary to honour your 2-Year Premium eligibility or to comply with our legal obligations. One-time password records are deleted within {ph("7")} days. You can ask us to delete your record at any time.</p>
 
 <h2 id="p6">6. Security</h2>
 <p>Your data is transmitted over HTTPS. One-time passwords are stored only as cryptographic hashes and are never readable by us or by anyone else. Access to our database is restricted, and we apply rate limiting plus attempt and resend limits to resist abuse. No system is perfectly secure, but we take these safeguards seriously.</p>
@@ -121,7 +121,7 @@ legal_page(
 legal_page(
     "terms", "Terms and conditions", "Terms and conditions",
     "Terms and Conditions | Turne Waitlist, Premium and Giveaways",
-    "Terms for the Turne waitlist, Lifetime Premium membership and giveaways, including eligibility, the 50/50 allocation, prizes and governing law.",
+    "Terms for the Turne waitlist, 2-Year Premium membership and giveaways, including eligibility, the 50/50 allocation, prizes and governing law.",
     [("part-a", "Part A: Waitlist"), ("part-b", "Part B: Premium"), ("part-c", "Part C: Giveaways"), ("part-d", "Part D: General")],
     f"""<p>These terms govern your use of the Turne waitlist website operated by <strong>{ENTITY}</strong> ("Turne", "we", "us"). By joining the waitlist you accept these terms. Please also read our <a class="textlink" href="{{{{u:privacy}}}}">Privacy policy</a>.</p>""",
     f"""
@@ -141,9 +141,9 @@ legal_page(
 
 <h2 id="part-b">Part B: Premium membership terms</h2>
 <h3 id="b1">B1. The first-10,000 offer</h3>
-<p>The first 10,000 verified waitlist members qualify for Turne <strong>Lifetime Premium</strong> membership at no cost. Qualification is determined by verified registration order and is allocated automatically by our systems. Once 10,000 spots are allocated, the offer closes.</p>
-<h3 id="b2">B2. What "Lifetime" means</h3>
-<p>"Lifetime" means for as long as Turne operates the Premium membership tier and your membership remains in good standing. It does not mean any specific number of years, and it does not survive the discontinuation of the Turne service.</p>
+<p>The first 10,000 verified waitlist members qualify for Turne <strong>2-Year Premium</strong> membership at no cost. Qualification is determined by verified registration order and is allocated automatically by our systems. Once 10,000 spots are allocated, the offer closes.</p>
+<h3 id="b2">B2. How long Premium lasts</h3>
+<p>2-Year Premium lasts for two years (24 months) starting on the day Turne launches publicly, provided your membership remains in good standing. It ends automatically after that period and does not renew on its own; we will tell you before it ends. It does not survive the discontinuation of the Turne service.</p>
 <h3 id="b3">B3. Premium benefits may evolve</h3>
 <p>Premium benefits are not finalised. We describe the current intended benefits on our website, and they may change, expand or be replaced as Turne develops. We will not reduce the core Premium entitlement without telling members.</p>
 <p>Currently intended benefits include: access to the Premium allocation of selected giveaway opportunities, early access to selected experiences, and priority on new opportunities as they are introduced. Nothing in this list is a guarantee of a specific feature at a specific time.</p>
