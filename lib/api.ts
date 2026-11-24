@@ -64,10 +64,10 @@ const mock = (() => {
       await wait(150);
       return { waitlistCount: count, premiumLimit: config.premiumLimit, launchAt: config.launchAt };
     },
-    async sendOtp(p: { phone: string }) {
+    async sendOtp(p: { phone: string; purpose?: "brand" }) {
       await wait(500);
       if (!/^[6-9]\d{9}$/.test(p.phone)) return fail("Enter a 10-digit Indian mobile number.", "invalid_phone");
-      if (members[p.phone]) return fail("This number is already on the waitlist, so you're all set. We'll message you before launch.", "already_registered", 409);
+      if (p.purpose !== "brand" && members[p.phone]) return fail("This number is already on the waitlist, so you're all set. We'll message you before launch.", "already_registered", 409);
       pending[p.phone] = { code: "123456", tries: 0 };
       return { ok: true, resendAfter: config.otpResendSeconds, mock: true };
     },
@@ -95,6 +95,12 @@ const mock = (() => {
     },
     async brandEnquiry() { await wait(600); return { ok: true }; },
     async contact() { await wait(600); return { ok: true }; },
+    async brandRegister(p: Json) {
+      await wait(700);
+      if (!tokens[p.verificationToken as string]) return fail("Please verify your mobile number on WhatsApp first.", "token_invalid", 401);
+      delete tokens[p.verificationToken as string];
+      return { ok: true, reference: "TB-00000" };
+    },
   };
 })();
 
@@ -102,8 +108,8 @@ export const api = {
   isMock: MOCK,
   /** GET /stats -> { waitlistCount, premiumLimit, launchAt } */
   getStats: (): Promise<Stats> => (MOCK ? mock.getStats() : request("GET", "/stats")),
-  /** POST /otp/send { phone } -> { ok, resendAfter, mock? } */
-  sendOtp: (p: { phone: string }): Promise<{ ok: boolean; resendAfter?: number; mock?: boolean }> =>
+  /** POST /otp/send { phone, purpose? } -> { ok, resendAfter, mock? }. purpose "brand" = brand registration. */
+  sendOtp: (p: { phone: string; purpose?: "brand" }): Promise<{ ok: boolean; resendAfter?: number; mock?: boolean }> =>
     (MOCK ? mock.sendOtp(p) : request("POST", "/otp/send", p)),
   /** POST /otp/verify { phone, code } -> { ok, verificationToken, existing } */
   verifyOtp: (p: { phone: string; code: string }): Promise<{ ok: boolean; verificationToken: string; existing: Entry | null }> =>
@@ -114,6 +120,9 @@ export const api = {
   brandEnquiry: (p: Json): Promise<{ ok: boolean }> => (MOCK ? mock.brandEnquiry() : request("POST", "/brands/enquiry", p)),
   /** POST /contact { name, email, topic, message, website } -> { ok } */
   contact: (p: Json): Promise<{ ok: boolean }> => (MOCK ? mock.contact() : request("POST", "/contact", p)),
+  /** POST /brands/register { verificationToken, company, …, consent } -> { ok, reference } */
+  brandRegister: (p: Json): Promise<{ ok: boolean; reference: string }> =>
+    (MOCK ? mock.brandRegister(p) : request("POST", "/brands/register", p)),
 };
 
 /** UTM tags and invite code captured on the landing page (see components/Attribution). */

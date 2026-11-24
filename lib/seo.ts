@@ -128,6 +128,7 @@ export function pageSchema(key: PageKey): Ld[] {
     primaryImageOfPage: { "@type": "ImageObject", url: `${SITE}/assets/og/${p.og}.png`, width: 1200, height: 630 },
     dateModified: BUILT,
     ...(p.slug ? { breadcrumb: { "@id": `${url}#breadcrumb` } } : {}),
+    ...(key === "brands-register" ? { potentialAction: { "@type": "RegisterAction", target: url } } : {}),
     ...(key === "premium" || key === "join" || key === "home" ? { mentions: { "@id": `${SITE}/premium/#offer` } } : {}),
     ...(p.faq
       ? {
@@ -140,13 +141,17 @@ export function pageSchema(key: PageKey): Ld[] {
       : {}),
   });
   if (p.slug) {
+    // Nested pages (e.g. brands/register) get their parent page in the trail.
+    const parent = p.slug.includes("/") ? (Object.keys(PAGES) as PageKey[]).find((k) => PAGES[k].slug === p.slug.split("/")[0]) : undefined;
+    const trail = [
+      { name: "Home", item: `${SITE}/` },
+      ...(parent ? [{ name: PAGES[parent].crumb, item: urlFor(parent) }] : []),
+      { name: p.crumb, item: url },
+    ];
     graph.push({
       "@type": "BreadcrumbList",
       "@id": `${url}#breadcrumb`,
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: `${SITE}/` },
-        { "@type": "ListItem", position: 2, name: p.crumb, item: url },
-      ],
+      itemListElement: trail.map((t, i) => ({ "@type": "ListItem", position: i + 1, ...t })),
     });
   }
   if (key === "premium" || key === "join" || key === "home") graph.push(premiumOffer());

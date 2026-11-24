@@ -44,7 +44,7 @@ const FORMS_PER_IP_HOUR = 10;
 const ALREADY_REGISTERED = "This number is already on the waitlist, so you're all set. We'll message you before launch.";
 
 const ORIGINS = new Set(
-  ["https://turne.in", "https://www.turne.in", ...env("ALLOWED_ORIGINS").split(",")]
+  ["https://turne.in", "https://www.turne.in", "https://brands.turne.in", ...env("ALLOWED_ORIGINS").split(",")]
     .map((o) => o.trim()).filter(Boolean),
 );
 const LOCAL = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
@@ -260,10 +260,14 @@ async function otpSend(body: Record<string, unknown>, ip: string | null) {
   const phone = str(body.phone, 20);
   if (!isPhone(phone)) throw new Fail("invalid_phone", "Enter a 10-digit Indian mobile number.");
 
-  // Already registered: say so and spend no message. Only the fact that it's registered is
-  // revealed; the spot, name and invite code still need the OTP (see otpVerify).
-  const member = must(await db.from("members").select("id").eq("phone", phone).maybeSingle());
-  if (member) throw new Fail("already_registered", ALREADY_REGISTERED, 409);
+  // Waitlist sign-up only: if the number is already on the waitlist, say so and spend no message.
+  // Only the fact that it's registered is revealed; the spot, name and invite code still need
+  // the OTP (see otpVerify). Brand registrations (purpose "brand") verify any number: a
+  // marketing lead who joined the waitlist personally can still register their brand.
+  if (body.purpose !== "brand") {
+    const member = must(await db.from("members").select("id").eq("phone", phone).maybeSingle());
+    if (member) throw new Fail("already_registered", ALREADY_REGISTERED, 409);
+  }
 
   const last = must(await db.from("otp_codes").select("sent_at").eq("phone", phone).maybeSingle());
   if (last && Date.now() - Date.parse(last.sent_at) < RESEND_AFTER_S * 1000) {
@@ -388,6 +392,64 @@ async function brandEnquiry(body: Record<string, unknown>, ip: string | null) {
   }
   must(await db.from("brand_enquiries").insert(row));
   return { ok: true };
+}
+
+const BRAND_CATEGORIES = new Set([
+  "Consumer tech", "Fashion and beauty", "Food and beverage", "Education", "Finance and fintech",
+  "Gaming and entertainment", "Health and fitness", "Startup or accelerator", "Media and agency", "Other",
+]);
+const BRAND_SIZES = new Set(["1-10", "11-50", "51-200", "201-1000", "1000+"]);
+const BRAND_INTERESTS = new Set(["Events", "Product launches", "Giveaways", "Startup rooms and demo days", "Community"]);
+const BRAND_TIMELINES = new Set(["At launch", "Within 3 months", "3 to 6 months", "Just exploring"]);
+
+/** Registration from brands.turne.in: stored in brand_enquiries with source = 'registration'. */
+async function brandRegister(body: Record<string, unknown>, ip: string | null) {
+  if (str(body.website, 200)) return { ok: true, reference: "" }; // honeypot
+  const pick = (v: unknown, allowed: Set<string>) => { const x = str(v, 60); return allowed.has(x) ? x : null; };
+  const interests = Array.isArray(body.interests)
+    ? [...new Set(body.interests.map((i) => str(i, 60)).filter((i) => BRAND_INTERESTS.has(i)))]
+    : [];
+  const token = str(body.verificationToken, 200);
+  if (!token) throw new Fail("token_invalid", "Please verify your mobile number on WhatsApp first.", 401);
+  const row = {
+    source: "registration",
+    company: str(body.company, 150),
+    legal_name: str(body.legal_name, 200) || null,
+    website_url: str(body.website_url, 300),
+    category: pick(body.category, BRAND_CATEGORIES),
+    city: str(body.city, 80),
+    company_size: pick(body.company_size, BRAND_SIZES),
+    name: str(body.name, 100),
+    role: str(body.role, 100),
+    email: str(body.email, 200),
+    phone: "",
+    interests,
+    timeline: pick(body.timeline, BRAND_TIMELINES),
+    plan: interests.join(", ") || null,
+    message: str(body.message, 5000) || null,
+    ip,
+  };
+  if (!row.company || !row.website_url || !row.category || !row.city) {
+    throw new Fail("invalid_form", "Add your brand name, website or Instagram, category and city.");
+  }
+  if (!row.name || !row.role || !isEmail(row.email)) {
+    throw new Fail("invalid_form", "Add your name, role and a valid work email.");
+  }
+  if (!interests.length) throw new Fail("invalid_form", "Pick at least one thing you'd like to run on Turne.");
+  if (body.consent !== true) throw new Fail("invalid_form", "Please agree to be contacted about your registration.");
+  if ((await countLastHour("brand_enquiries", "created_at", "ip", ip)) >= FORMS_PER_IP_HOUR) {
+    throw new Fail("rate_limited", "Too many registrations from this connection. Try again in an hour.", 429);
+  }
+  // Last: the contact's mobile must have been verified by WhatsApp OTP (/otp/send with purpose
+  // "brand", then /otp/verify). Using the token up in one statement means it works only once,
+  // and checking it last means a typo elsewhere doesn't cost the person a new code.
+  const used = must(await db.from("verification_tokens").update({ used_at: new Date().toISOString() })
+    .eq("token_hash", await sha256(token)).is("used_at", null).gt("expires_at", new Date().toISOString())
+    .select("phone")) as { phone: string }[];
+  if (!used.length) throw new Fail("token_invalid", "Your WhatsApp verification expired. Verify your number again.", 401);
+  row.phone = used[0].phone;
+  const saved = must(await db.from("brand_enquiries").insert(row).select("id").single()) as { id: number };
+  return { ok: true, reference: `TB-${String(saved.id).padStart(5, "0")}` };
 }
 
 async function contact(body: Record<string, unknown>, ip: string | null) {
@@ -646,6 +708,7 @@ Deno.serve(async (req) => {
       case "/otp/verify": return json(req, await otpVerify(body));
       case "/waitlist": return json(req, await waitlist(body));
       case "/brands/enquiry": return json(req, await brandEnquiry(body, ip));
+      case "/brands/register": return json(req, await brandRegister(body, ip));
       case "/contact": return json(req, await contact(body, ip));
     }
     throw new Fail("not_found", "Not found.", 404);

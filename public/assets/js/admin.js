@@ -328,10 +328,15 @@
   function inboxCard(kind, r) {
     var mail = '<a href="mailto:' + esc(r.email) + '">' + esc(r.email) + "</a>";
     var meta = kind === "enquiries"
-      ? [mail, r.phone ? '<a href="tel:' + esc(r.phone) + '">' + esc(r.phone) + "</a>" : "", r.plan ? "Plan: " + esc(r.plan) : ""]
+      ? (r.source === "registration"
+        ? [mail, r.phone ? '<a href="tel:' + esc(r.phone) + '">' + esc(r.phone) + "</a>" : "", r.role ? esc(r.role) : "",
+          r.website_url ? '<a href="' + esc(/^https?:\/\//i.test(r.website_url) ? r.website_url : "https://" + r.website_url) + '" target="_blank" rel="noopener">' + esc(r.website_url) + "</a>" : "",
+          r.category ? esc(r.category) : "", r.city ? esc(r.city) : "", r.company_size ? esc(r.company_size) + " people" : "",
+          r.interests && r.interests.length ? "Wants: " + esc(r.interests.join(", ")) : "", r.timeline ? "When: " + esc(r.timeline) : ""]
+        : [mail, r.phone ? '<a href="tel:' + esc(r.phone) + '">' + esc(r.phone) + "</a>" : "", r.plan ? "Plan: " + esc(r.plan) : ""])
       : [mail, r.topic ? "Topic: " + esc(r.topic) : ""];
     return '<article class="adm-msg" data-id="' + r.id + '" data-status="' + esc(r.status) + '">' +
-      "<header><b>" + esc(r.name) + "</b>" + (kind === "enquiries" ? "<span>" + esc(r.company) + "</span>" : "") +
+      "<header><b>" + esc(r.name) + "</b>" + (kind === "enquiries" ? "<span>" + esc(r.company) + (r.source === "registration" ? " · Brand registration TB-" + String(r.id).padStart(5, "0") : "") + "</span>" : "") +
       '<time datetime="' + esc(r.created_at) + '">' + when(r.created_at) + "</time></header>" +
       '<div class="meta">' + meta.filter(Boolean).join("<span>·</span>") + "</div>" +
       (r.message ? '<div class="body">' + esc(r.message) + "</div>" : "") +

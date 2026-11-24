@@ -8,7 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-const HIDDEN_ON = new Set(["/join/", "/brands/", "/contact/"]);
+const HIDDEN_ON = new Set(["/join/", "/brands/", "/brands/register/", "/contact/"]);
 
 export function StickyJoin() {
   const pathname = usePathname();

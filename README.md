@@ -14,11 +14,13 @@ components/
   Header, Footer, Logo, StickyJoin      site chrome
   live.tsx              live waitlist count, tally, Premium spot grid, countdown (reads GET /stats)
   JsonLd.tsx            schema.org structured data
+  brands/               brand registration form (with WhatsApp verification) and audience note
   PageScripts.tsx       starts a page's interactive scripts and stops them on navigation
 lib/
   config.ts             API URL, launch date, Premium limit, cities: the main settings file
   pages.ts              every page's title, description, share image, breadcrumb and FAQ
   seo.ts                builds <head> metadata and JSON-LD from pages.ts
+  brands.ts             brand registration options (must match the api function)
   llms.ts               builds llms.txt / llms-full.txt from the same data
   api.ts                every network call (with a mock mode when apiBase is empty)
   scripts/              join flow, contact/brand forms, home carousel, explainer and How-it-works animations
@@ -54,7 +56,8 @@ Near-black base (`--night #07070c`), electric violet as the brand colour (`--vio
 | `/how-it-works/` | How it works | Live expo floor, inside a pod, the 3D "How a Turne event works" explainer |
 | `/giveaways/` | Giveaways | Prize types, 50/50 split, giveaway rules |
 | `/premium/` | Premium | First-10,000 offer (2 years free), live spots, benefits, fine print |
-| `/brands/` | For brands | Capabilities and enquiry form |
+| `/brands/` | For brands | Landing page for brands: what they can run, how it works, brand FAQ (FAQPage schema) |
+| `/brands/register/` | Register your brand | 3-step registration with WhatsApp OTP; saved to `brand_enquiries` (source `registration`), shown in `/admin/` under Enquiries |
 | `/faq/` | FAQ | FAQPage schema |
 | `/contact/` | Contact | Three inboxes and a contact form |
 | `/join/` | Join the waitlist | 4-step WhatsApp OTP signup |
