@@ -8,7 +8,7 @@
 <title>Turne Admin</title>
 <link rel="icon" href="/assets/img/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="stylesheet" href="/assets/css/site.css?v=2b36c804">
-<link rel="stylesheet" href="/assets/css/admin.css?v=39edc55c">
+<link rel="stylesheet" href="/assets/css/admin.css?v=wa1">
 </head>
 <body class="adm">
 
@@ -39,6 +39,7 @@
     <div class="adm-bar__brand"><img src="/assets/img/favicon-32.png" alt="" width="24" height="24"><b>Turne admin</b></div>
     <nav class="adm-tabs" role="tablist" aria-label="Sections">
       <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
+      <button role="tab" data-tab="whatsapp">WhatsApp <span class="adm-badge" id="badge-whatsapp" hidden></span></button>
       <button role="tab" data-tab="members">Members</button>
       <button role="tab" data-tab="enquiries">Brand enquiries <span class="adm-badge" id="badge-enquiries" hidden></span></button>
       <button role="tab" data-tab="messages">Messages <span class="adm-badge" id="badge-messages" hidden></span></button>
@@ -62,6 +63,52 @@
       <div class="adm-card"><h3>Top cities</h3><div id="ov-cities"></div></div>
       <div class="adm-card"><h3>Where they came from <span class="adm-sub">utm_source</span></h3><div id="ov-sources"></div></div>
       <div class="adm-card"><h3>Top referrers</h3><div id="ov-referrers"></div></div>
+    </div>
+  </section>
+
+  <!-- WhatsApp inbox -->
+  <section class="adm-view adm-view--wa" id="view-whatsapp" role="tabpanel" hidden>
+    <div class="wa" id="wa" data-mode="list">
+      <aside class="wa-list" aria-label="Conversations">
+        <div class="wa-list__head">
+          <h2>WhatsApp inbox</h2>
+          <button class="adm-link" type="button" id="wa-refresh">Refresh</button>
+        </div>
+        <div class="wa-chips" role="group" aria-label="Filter conversations">
+          <button type="button" data-wa-filter="all" aria-pressed="true">All <b id="wa-n-all"></b></button>
+          <button type="button" data-wa-filter="reply" aria-pressed="false">Needs reply <b id="wa-n-reply"></b></button>
+          <button type="button" data-wa-filter="unread" aria-pressed="false">Unread <b id="wa-n-unread"></b></button>
+          <button type="button" data-wa-filter="open" aria-pressed="false">Can reply <b id="wa-n-open"></b></button>
+        </div>
+        <input class="input" id="wa-q" type="search" placeholder="Search name or number" aria-label="Search conversations">
+        <div class="wa-convs" id="wa-convs" role="list"></div>
+        <button class="btn btn--ghost btn--sm wa-more" type="button" id="wa-more" hidden>Load more</button>
+      </aside>
+
+      <section class="wa-thread" aria-label="Conversation">
+        <div class="wa-empty" id="wa-empty"><p>Select a conversation to start</p></div>
+        <div class="wa-chat" id="wa-chat" hidden>
+          <header class="wa-chat__head">
+            <button class="adm-link wa-back" type="button" id="wa-back" aria-label="Back to conversations">Back</button>
+            <span class="wa-avatar" id="wa-avatar" aria-hidden="true"></span>
+            <div class="wa-chat__who"><b id="wa-name"></b><span id="wa-number"></span></div>
+            <span class="wa-window" id="wa-window"></span>
+            <button class="adm-link wa-info-btn" type="button" id="wa-info-btn">Details</button>
+          </header>
+          <div class="wa-msgs" id="wa-msgs" aria-live="polite"></div>
+          <form class="wa-compose" id="wa-compose" novalidate>
+            <p class="wa-compose__note" id="wa-note" hidden></p>
+            <div class="wa-compose__row">
+              <textarea class="textarea" id="wa-text" rows="1" maxlength="4096" placeholder="Type a reply" aria-label="Reply"></textarea>
+              <button class="btn btn--ticket btn--sm" type="submit" id="wa-send">Send</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <aside class="wa-info" id="wa-info" aria-label="Contact details">
+        <p class="adm-empty">Select a conversation to see who it is.</p>
+      </aside>
     </div>
   </section>
 
@@ -154,6 +201,6 @@
 <div class="adm-tip" id="tip" role="tooltip" hidden></div>
 
 <script src="/assets/js/config.js?v=9bf967fe"></script>
-<script src="/assets/js/admin.js?v=730a5d9c"></script>
+<script src="/assets/js/admin.js?v=wa1"></script>
 </body>
 </html>

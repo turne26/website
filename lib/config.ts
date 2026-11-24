@@ -19,8 +19,4 @@ export const config = {
   // Minimum age to join (Terms A2 / Privacy §8).
   minAge: 13,
   otpResendSeconds: 30,
-  cities: [
-    "Delhi", "Gurugram", "Noida", "Mumbai", "Bengaluru", "Hyderabad", "Pune", "Chennai",
-    "Kolkata", "Jaipur", "Ahmedabad", "Lucknow", "Chandigarh", "Indore", "Kochi", "Bhopal",
-  ],
 };

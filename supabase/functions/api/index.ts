@@ -178,6 +178,71 @@ async function waSend(phone: string, code: string) {
   throw new Fail("send_failed", "We couldn't send the code right now. Try again in a minute.", 502);
 }
 
+/* ------------------------------------------------------- WhatsApp inbox helpers */
+
+const graph = (path: string) => `https://graph.facebook.com/${WA_VERSION}/${path}`;
+const waHeaders = () => ({ "Authorization": `Bearer ${env("WA_ACCESS_TOKEN")}`, "Content-Type": "application/json" });
+
+/** Records a message in the admin inbox (wa_messages + wa_contacts). Never throws: logging must
+ *  not break an OTP send or a webhook. */
+async function waLog(m: {
+  waId: string; direction: "in" | "out"; kind: string; body: string | null; wamid?: string | null;
+  mediaId?: string | null; mediaMime?: string | null; status?: string | null; sentBy?: string | null;
+  profileName?: string | null; at?: string;
+}) {
+  const { error } = await db.rpc("wa_log_message", {
+    p_wa_id: m.waId, p_direction: m.direction, p_kind: m.kind, p_body: m.body,
+    p_wamid: m.wamid ?? null, p_media_id: m.mediaId ?? null, p_media_mime: m.mediaMime ?? null,
+    p_status: m.status ?? null, p_sent_by: m.sentBy ?? null, p_profile_name: m.profileName ?? null,
+    p_created_at: m.at ?? new Date().toISOString(),
+  });
+  if (error) console.error("wa_log_message failed", error.message);
+}
+
+/** Sends a free-text WhatsApp message (only allowed within 24 hours of their last message). */
+async function waSendText(waId: string, text: string) {
+  const res = await fetch(graph(`${env("WA_PHONE_NUMBER_ID")}/messages`), {
+    method: "POST",
+    headers: waHeaders(),
+    body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: waId, type: "text", text: { body: text, preview_url: true } }),
+  });
+  const body = await res.json().catch(() => ({}));
+  const id = body?.messages?.[0]?.id;
+  if (res.ok && id) return String(id);
+  const err = body?.error ?? {};
+  console.error("whatsapp text send failed", res.status, JSON.stringify(err));
+  if (Number(err.code) === 131047) {
+    throw new Fail("window_closed", "More than 24 hours have passed since their last message, so WhatsApp only allows approved templates now.", 409);
+  }
+  throw new Fail("send_failed", `WhatsApp didn't accept the message${err.message ? `: ${err.message}` : "."}`, 502);
+}
+
+/** One line of text for any incoming message type, for the inbox list and thread. */
+function describeIncoming(msg: any): { kind: string; body: string; mediaId: string | null; mime: string | null } {
+  const t = String(msg?.type ?? "unknown");
+  const media = msg?.[t] ?? {};
+  switch (t) {
+    case "text": return { kind: t, body: String(msg.text?.body ?? ""), mediaId: null, mime: null };
+    case "button": return { kind: t, body: String(msg.button?.text ?? ""), mediaId: null, mime: null };
+    case "interactive": {
+      const r = msg.interactive?.button_reply ?? msg.interactive?.list_reply ?? {};
+      return { kind: t, body: String(r.title ?? "[reply]"), mediaId: null, mime: null };
+    }
+    case "image": case "video": case "document": case "audio": case "sticker": {
+      const label = { image: "Photo", video: "Video", document: "Document", audio: "Voice message", sticker: "Sticker" }[t];
+      const extra = media.caption || media.filename || "";
+      return { kind: t, body: extra ? `${extra}` : `[${label}]`, mediaId: media.id ?? null, mime: media.mime_type ?? null };
+    }
+    case "location": {
+      const l = msg.location ?? {};
+      return { kind: t, body: `[Location] ${l.name ?? ""} ${l.latitude ?? ""},${l.longitude ?? ""}`.trim(), mediaId: null, mime: null };
+    }
+    case "reaction": return { kind: t, body: msg.reaction?.emoji ? `Reacted ${msg.reaction.emoji}` : "Removed a reaction", mediaId: null, mime: null };
+    case "contacts": return { kind: t, body: "[Contact card]", mediaId: null, mime: null };
+    default: return { kind: t, body: `[${t} message]`, mediaId: null, mime: null };
+  }
+}
+
 /* ------------------------------------------------------------ WhatsApp webhook */
 // Callback URL: https://<project>.supabase.co/functions/v1/api/whatsapp/webhook
 // GET  = Meta's one-time verification handshake.
@@ -225,14 +290,27 @@ async function waWebhook(req: Request) {
     for (const change of entry?.changes ?? []) {
       const v = change?.value ?? {};
       for (const st of v.statuses ?? []) {
-        // Only failures are interesting: e.g. 131026 = number not on WhatsApp.
-        if (st.status === "failed") {
-          console.error("whatsapp delivery failed", st.id, st.recipient_id, JSON.stringify(st.errors ?? []));
-        }
+        const errText = st.errors?.length
+          ? st.errors.map((e: any) => `${e.code} ${e.title ?? ""} ${e.error_data?.details ?? ""}`.trim()).join("; ")
+          : null;
+        if (st.status === "failed") console.error("whatsapp delivery failed", st.id, st.recipient_id, errText);
+        const at = st.timestamp ? new Date(Number(st.timestamp) * 1000).toISOString() : new Date().toISOString();
+        const { error } = await db.rpc("wa_set_status", { p_wamid: String(st.id), p_status: String(st.status), p_error: errText, p_at: at });
+        if (error) console.error("wa_set_status failed", error.message);
       }
+      const names = new Map<string, string>(
+        (v.contacts ?? []).map((c: any) => [String(c.wa_id), String(c.profile?.name ?? "")] as [string, string]),
+      );
       for (const msg of v.messages ?? []) {
+        const from = String(msg?.from ?? "");
+        const d = describeIncoming(msg);
+        await waLog({
+          waId: from, direction: "in", kind: d.kind, body: d.body, wamid: String(msg.id),
+          mediaId: d.mediaId, mediaMime: d.mime, profileName: names.get(from) || null,
+          at: msg.timestamp ? new Date(Number(msg.timestamp) * 1000).toISOString() : undefined,
+        });
         const text = String(msg?.text?.body ?? msg?.button?.text ?? "").trim().toLowerCase();
-        const phone = localPhone(String(msg?.from ?? ""));
+        const phone = localPhone(from);
         if (!phone) continue;
         if (STOP_WORDS.has(text)) {
           must(await db.from("members").update({ whatsapp_opted_out_at: new Date().toISOString() }).eq("phone", phone));
@@ -281,6 +359,10 @@ async function otpSend(body: Record<string, unknown>, ip: string | null) {
   const test = OTP_MODE !== "whatsapp";
   const code = test ? "123456" : newCode();
   const messageId = test ? null : await waSend(phone, code);
+  // Show it in the admin WhatsApp inbox. Never the code itself.
+  if (messageId) {
+    await waLog({ waId: `91${phone}`, direction: "out", kind: "otp", body: "Verification code sent (turne_otp template)", wamid: messageId, sentBy: "system" });
+  }
 
   must(await db.from("otp_codes").upsert({
     phone,
@@ -349,7 +431,7 @@ async function waitlist(body: Record<string, unknown>) {
   if (name.length < 2) throw new Fail("invalid_name", "Add your full name.");
   if (!dob || isNaN(dob.getTime()) || ageOn(dob) > 100) throw new Fail("invalid_dob", "Add a valid date of birth.");
   if (ageOn(dob) < MIN_AGE) throw new Fail("too_young", `You need to be at least ${MIN_AGE} to join.`);
-  if (!city) throw new Fail("invalid_city", "Pick your city, or choose Other and type it.");
+  if (!city) throw new Fail("invalid_city", "Add your city.");
 
   const u = (body.utm && typeof body.utm === "object" ? body.utm : {}) as Record<string, unknown>;
   const utm = Object.fromEntries(
@@ -648,6 +730,137 @@ async function adminLog(url: URL) {
   return { rows: data ?? [], total: count ?? 0, page, pageSize: ADMIN_PAGE };
 }
 
+/* ---------------------------------------------------------- admin: WhatsApp inbox */
+
+const WINDOW_MS = 24 * 3600_000;
+const localOf = (waId: string) => (/^91[6-9]\d{9}$/.test(waId) ? waId.slice(2) : null);
+const cleanWaId = (v: unknown) => { const d = str(v, 20).replace(/\D/g, ""); return /^\d{8,15}$/.test(d) ? d : ""; };
+
+/** Names and tags for a set of numbers: waitlist member and brand registrations. */
+async function waPeople(waIds: string[]) {
+  const phones = waIds.map(localOf).filter(Boolean) as string[];
+  const members = phones.length
+    ? must(await db.from("members").select("phone, name, position, premium, city, created_at, whatsapp_opted_out_at").in("phone", phones)) as any[]
+    : [];
+  const brands = phones.length
+    ? must(await db.from("brand_enquiries").select("id, phone, company, name, source, status, created_at").in("phone", phones).order("created_at", { ascending: false })) as any[]
+    : [];
+  return { members: new Map(members.map((m) => [m.phone, m])), brands };
+}
+
+async function adminWaSummary() {
+  const since = new Date(Date.now() - WINDOW_MS).toISOString();
+  const count = async (f: (q: any) => any) => {
+    const { count, error } = await f(db.from("wa_contacts").select("wa_id", { count: "exact", head: true }));
+    if (error) throw new Error(error.message);
+    return count ?? 0;
+  };
+  return {
+    total: await count((q) => q),
+    needsReply: await count((q) => q.eq("last_direction", "in")),
+    unread: await count((q) => q.gt("unread", 0)),
+    open: await count((q) => q.gte("last_in_at", since)),
+  };
+}
+
+async function adminWaConversations(url: URL) {
+  const page = pageOf(url);
+  const filter = url.searchParams.get("filter") ?? "all";
+  const term = str(url.searchParams.get("q"), 60).replace(/[%,()*"]/g, "");
+  let q = db.from("wa_contacts").select("*", { count: "exact" });
+  if (filter === "reply") q = q.eq("last_direction", "in");
+  if (filter === "unread") q = q.gt("unread", 0);
+  if (filter === "open") q = q.gte("last_in_at", new Date(Date.now() - WINDOW_MS).toISOString());
+  if (term) {
+    // Match the number, their WhatsApp name, or the name they used on the waitlist.
+    const digits = term.replace(/\D/g, "");
+    const byName = must(await db.from("members").select("phone").ilike("name", `%${term}%`).limit(50)) as { phone: string }[];
+    const ors = [`profile_name.ilike.*${term}*`];
+    if (digits.length >= 3) ors.push(`wa_id.like.*${digits}*`);
+    if (byName.length) ors.push(`wa_id.in.(${byName.map((m) => "91" + m.phone).join(",")})`);
+    q = q.or(ors.join(","));
+  }
+  const { data, count, error } = await q.order("last_at", { ascending: false }).range(page * ADMIN_PAGE, page * ADMIN_PAGE + ADMIN_PAGE - 1);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as any[];
+  const people = await waPeople(rows.map((r) => r.wa_id));
+  return {
+    rows: rows.map((r) => {
+      const phone = localOf(r.wa_id);
+      const m = phone ? people.members.get(phone) : null;
+      const b = phone ? people.brands.find((x) => x.phone === phone && x.source === "registration") : null;
+      return {
+        ...r,
+        name: m?.name || (b ? `${b.name} · ${b.company}` : null) || r.profile_name || null,
+        member: m ? { position: m.position, premium: m.premium, optedOut: !!m.whatsapp_opted_out_at } : null,
+        brand: b ? { company: b.company } : null,
+        windowOpen: !!r.last_in_at && Date.now() - Date.parse(r.last_in_at) < WINDOW_MS,
+      };
+    }),
+    total: count ?? 0, page, pageSize: ADMIN_PAGE,
+  };
+}
+
+async function adminWaThread(url: URL) {
+  const waId = cleanWaId(url.searchParams.get("wa_id"));
+  if (!waId) throw new Fail("bad_request", "Missing number.");
+  const contact = must(await db.from("wa_contacts").select("*").eq("wa_id", waId).maybeSingle()) as any;
+  if (!contact) throw new Fail("not_found", "No conversation with that number.", 404);
+  let q = db.from("wa_messages").select("id, wamid, direction, kind, body, media_id, media_mime, status, error, sent_by, created_at")
+    .eq("wa_id", waId).order("created_at", { ascending: false }).limit(60);
+  const before = Number(url.searchParams.get("before"));
+  if (Number.isInteger(before) && before > 0) q = q.lt("id", before);
+  const msgs = (must(await q) as any[]).reverse();
+  const phone = localOf(waId);
+  const people = await waPeople([waId]);
+  const m = phone ? people.members.get(phone) : null;
+  const windowUntil = contact.last_in_at ? new Date(Date.parse(contact.last_in_at) + WINDOW_MS).toISOString() : null;
+  return {
+    contact: { ...contact, windowUntil, windowOpen: !!windowUntil && Date.parse(windowUntil) > Date.now() },
+    messages: msgs,
+    member: m ? { position: m.position, name: m.name, premium: m.premium, city: m.city, joined: m.created_at, optedOut: !!m.whatsapp_opted_out_at } : null,
+    brands: people.brands.map((b) => ({ id: b.id, company: b.company, name: b.name, source: b.source, status: b.status, created_at: b.created_at })),
+    hasMore: msgs.length === 60,
+  };
+}
+
+async function adminWaSend(admin: string, body: Record<string, unknown>) {
+  const waId = cleanWaId(body.wa_id);
+  const text = str(body.text, 4096);
+  if (!waId || !text) throw new Fail("bad_request", "Write a message first.");
+  const contact = must(await db.from("wa_contacts").select("last_in_at").eq("wa_id", waId).maybeSingle()) as any;
+  if (!contact?.last_in_at || Date.now() - Date.parse(contact.last_in_at) >= WINDOW_MS) {
+    throw new Fail("window_closed", "More than 24 hours have passed since their last message, so WhatsApp only allows approved templates now.", 409);
+  }
+  const wamid = await waSendText(waId, text);
+  await waLog({ waId, direction: "out", kind: "text", body: text, wamid, sentBy: admin });
+  must(await db.from("wa_contacts").update({ unread: 0 }).eq("wa_id", waId));
+  await audit(admin, "whatsapp.send", `wa:${waId}`, { chars: text.length });
+  return { ok: true, wamid };
+}
+
+async function adminWaRead(body: Record<string, unknown>) {
+  const waId = cleanWaId(body.wa_id);
+  if (!waId) throw new Fail("bad_request", "Missing number.");
+  must(await db.from("wa_contacts").update({ unread: 0 }).eq("wa_id", waId));
+  return { ok: true };
+}
+
+/** Streams a photo or file someone sent us (WhatsApp media needs our token to download). */
+async function adminWaMedia(req: Request, url: URL) {
+  const id = str(url.searchParams.get("id"), 64);
+  if (!/^\d+$/.test(id)) throw new Fail("bad_request", "Missing media id.");
+  const known = must(await db.from("wa_messages").select("id").eq("media_id", id).limit(1)) as unknown[];
+  if (!known.length) throw new Fail("not_found", "Unknown media.", 404);
+  const meta = await fetch(graph(id), { headers: waHeaders() }).then((r) => r.json()).catch(() => ({}));
+  if (!meta?.url) throw new Fail("not_found", "WhatsApp no longer has this file (media expires after 30 days).", 404);
+  const file = await fetch(meta.url, { headers: { Authorization: `Bearer ${env("WA_ACCESS_TOKEN")}` } });
+  if (!file.ok) throw new Fail("not_found", "Couldn't download this file from WhatsApp.", 502);
+  return new Response(file.body, {
+    headers: { ...cors(req), "Content-Type": meta.mime_type || "application/octet-stream", "Cache-Control": "private, max-age=3600" },
+  });
+}
+
 async function adminRoute(req: Request, path: string) {
   const admin = await requireAdmin(req);
   const url = new URL(req.url);
@@ -662,6 +875,10 @@ async function adminRoute(req: Request, path: string) {
       case "/admin/enquiries": return json(req, await adminInbox("enquiries", url), 200, noStore);
       case "/admin/messages": return json(req, await adminInbox("messages", url), 200, noStore);
       case "/admin/log": return json(req, await adminLog(url), 200, noStore);
+      case "/admin/wa/summary": return json(req, await adminWaSummary(), 200, noStore);
+      case "/admin/wa/conversations": return json(req, await adminWaConversations(url), 200, noStore);
+      case "/admin/wa/thread": return json(req, await adminWaThread(url), 200, noStore);
+      case "/admin/wa/media": return await adminWaMedia(req, url);
     }
     throw new Fail("not_found", "Not found.", 404);
   }
@@ -675,6 +892,8 @@ async function adminRoute(req: Request, path: string) {
     case "/admin/members/delete": return json(req, await adminMemberDelete(admin, body));
     case "/admin/enquiries/update": return json(req, await adminInboxUpdate(admin, "enquiries", body));
     case "/admin/messages/update": return json(req, await adminInboxUpdate(admin, "messages", body));
+    case "/admin/wa/send": return json(req, await adminWaSend(admin, body));
+    case "/admin/wa/read": return json(req, await adminWaRead(body));
   }
   throw new Fail("not_found", "Not found.", 404);
 }

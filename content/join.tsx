@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { Stat, Ticks } from "@/components/live";
+import { CityPicker } from "@/components/CityPicker";
 
 export default function JoinContent() {
   return (
@@ -77,11 +78,9 @@ export default function JoinContent() {
 <div className="field"><label htmlFor="dob">Date of birth</label><input className="input" id="dob" name="dob" type="date" autoComplete="bday" required /><span className="hint">Some giveaways and experiences have a minimum age.</span></div>
 <div className="field">
 <label htmlFor="city">City</label>
-<select className="select input" id="city" name="city" required>
-<option value="">Choose your city</option><option>Delhi</option><option>Gurugram</option><option>Noida</option><option>Mumbai</option><option>Bengaluru</option><option>Hyderabad</option><option>Pune</option><option>Chennai</option><option>Kolkata</option><option>Jaipur</option><option>Ahmedabad</option><option>Lucknow</option><option>Chandigarh</option><option>Indore</option><option>Kochi</option><option>Bhopal</option><option value="__other">Other city</option>
-</select>
+<CityPicker id="city" name="city" required />
 </div>
-<div className="field" id="city-other-wrap" hidden><label htmlFor="city-other">Your city</label><input className="input" id="city-other" name="cityOther" autoComplete="address-level2" /></div>
+
 <div className="hp" aria-hidden="true"><label htmlFor="company">Company</label><input id="company" name="company" tabIndex={-1} autoComplete="off" /></div>
 <p className="error" id="details-error" hidden />
 <button className="btn btn--ticket btn--block" type="submit">Join the waitlist</button>

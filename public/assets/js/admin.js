@@ -110,6 +110,7 @@
     $("#me-email").textContent = session.email;
     var start = (location.hash || "").replace("#", "");
     openTab(views[start] ? start : "overview");
+    if (start !== "whatsapp") wa.summary().catch(function () {});
   }
 
   $("#login-form").addEventListener("submit", function (e) {
@@ -126,8 +127,9 @@
   });
   $("#logout").addEventListener("click", function () { signOut(""); });
 
-  var views = { overview: loadOverview, members: loadMembers, enquiries: function () { loadInbox("enquiries"); }, messages: function () { loadInbox("messages"); }, log: loadLog };
+  var views = { overview: loadOverview, whatsapp: function () { wa.open(); }, members: loadMembers, enquiries: function () { loadInbox("enquiries"); }, messages: function () { loadInbox("messages"); }, log: loadLog };
   function openTab(name) {
+    if (name !== "whatsapp" && window.__waLeave) window.__waLeave();
     $all(".adm-tabs [data-tab]").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === name)); });
     $all(".adm-view").forEach(function (v) { v.hidden = v.id !== "view-" + name; });
     if (location.hash !== "#" + name) history.replaceState(null, "", "#" + name);
@@ -367,9 +369,262 @@
     sel.addEventListener("change", function () { inbox[sel.dataset.inboxFilter].page = 0; loadInbox(sel.dataset.inboxFilter); });
   });
 
+  /* ---------------------------------------------------------------- WhatsApp inbox */
+  var wa = (function () {
+    var state = { filter: "all", q: "", page: 0, rows: [], total: 0, cur: null, thread: null, listTimer: 0, threadTimer: 0, media: {} };
+    var timeFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" });
+    var dateFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" });
+    var shortFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
+    function istDay(iso) { return dateFmt.format(new Date(iso)); }
+    function listTime(iso) {
+      var d = new Date(iso);
+      return istDay(iso) === istDay(new Date().toISOString()) ? timeFmt.format(d) : shortFmt.format(d);
+    }
+    function pretty(waId) {
+      var m = /^91(\d{5})(\d{5})$/.exec(waId);
+      return m ? "+91 " + m[1] + " " + m[2] : "+" + waId;
+    }
+    function initial(row) { var n = (row.name || row.profile_name || "").trim(); return n ? n[0].toUpperCase() : "#"; }
+    function hoursLeft(until) { var ms = Date.parse(until) - Date.now(); return ms > 0 ? Math.max(1, Math.round(ms / 3600000)) : 0; }
+
+    /* ---- list ---- */
+    function loadSummary() {
+      return call("GET", "/admin/wa/summary").then(function (n) {
+        $("#wa-n-all").textContent = num.format(n.total);
+        $("#wa-n-reply").textContent = num.format(n.needsReply);
+        $("#wa-n-unread").textContent = num.format(n.unread);
+        $("#wa-n-open").textContent = num.format(n.open);
+        badge("#badge-whatsapp", n.unread);
+      });
+    }
+    function loadList(append) {
+      var p = new URLSearchParams({ filter: state.filter, page: String(state.page) });
+      if (state.q) p.set("q", state.q);
+      return call("GET", "/admin/wa/conversations?" + p).then(function (res) {
+        state.rows = append ? state.rows.concat(res.rows) : res.rows;
+        state.total = res.total;
+        renderList();
+        $("#wa-more").hidden = state.rows.length >= res.total;
+      });
+    }
+    function tags(r) {
+      var t = [];
+      if (r.member) t.push('<span class="wa-tag wa-tag--' + (r.member.premium ? "premium" : "member") + '">' + (r.member.premium ? "Premium" : "Waitlist") + " #" + num.format(r.member.position) + "</span>");
+      if (r.brand) t.push('<span class="wa-tag wa-tag--brand">Brand</span>');
+      if (r.member && r.member.optedOut) t.push('<span class="wa-tag wa-tag--stop">Opted out</span>');
+      if (r.last_direction === "in") t.push('<span class="wa-tag wa-tag--reply">Needs reply</span>');
+      return t.join("");
+    }
+    function renderList() {
+      var box = $("#wa-convs");
+      if (!state.rows.length) {
+        box.innerHTML = '<p class="adm-empty wa-pad">' + (state.q || state.filter !== "all" ? "No conversations match." : "No WhatsApp messages yet. They appear here as soon as someone gets a code or messages Turne.") + "</p>";
+        return;
+      }
+      box.innerHTML = state.rows.map(function (r) {
+        var cur = state.cur === r.wa_id;
+        var prev = (r.last_direction === "out" ? "You: " : "") + (r.last_body || "");
+        return '<button type="button" role="listitem" class="wa-conv' + (cur ? " is-current" : "") + (r.unread ? " is-unread" : "") + '" data-wa="' + esc(r.wa_id) + '"' + (cur ? ' aria-current="true"' : "") + ">" +
+          '<span class="wa-avatar">' + esc(initial(r)) + "</span>" +
+          '<span class="wa-conv__main"><span class="wa-conv__top"><b>' + esc(r.name || pretty(r.wa_id)) + "</b><time>" + listTime(r.last_at) + "</time></span>" +
+          (r.name ? '<span class="wa-conv__num">' + esc(pretty(r.wa_id)) + "</span>" : "") +
+          '<span class="wa-conv__prev">' + esc(prev) + "</span>" +
+          '<span class="wa-conv__tags">' + tags(r) + (r.unread ? '<span class="wa-unread">' + r.unread + "</span>" : "") + "</span></span></button>";
+      }).join("");
+    }
+    $("#wa-convs").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-wa]"); if (b) openThread(b.dataset.wa);
+    });
+    $all("[data-wa-filter]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        state.filter = b.dataset.waFilter; state.page = 0;
+        $all("[data-wa-filter]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+        loadList(false).catch(fail);
+      });
+    });
+    var qTimer;
+    $("#wa-q").addEventListener("input", function () {
+      clearTimeout(qTimer);
+      qTimer = setTimeout(function () { state.q = $("#wa-q").value.trim(); state.page = 0; loadList(false).catch(fail); }, 300);
+    });
+    $("#wa-more").addEventListener("click", function () { state.page += 1; loadList(true).catch(fail); });
+    $("#wa-refresh").addEventListener("click", function () { refreshAll(); });
+
+    /* ---- thread ---- */
+    function ticks(m) {
+      if (m.direction !== "out") return "";
+      if (m.status === "failed") return '<span class="wa-tick wa-tick--failed" title="' + esc(m.error || "Not delivered") + '">Failed</span>';
+      var map = { sent: ["✓", "Sent"], delivered: ["✓✓", "Delivered"], read: ["✓✓", "Read"] };
+      var t = map[m.status] || map.sent;
+      return '<span class="wa-tick' + (m.status === "read" ? " wa-tick--read" : "") + '" title="' + t[1] + '" aria-label="' + t[1] + '">' + t[0] + "</span>";
+    }
+    function bubble(m) {
+      var media = "";
+      if (m.media_id && (m.kind === "image" || m.kind === "sticker")) {
+        media = '<span class="wa-media" data-media="' + esc(m.media_id) + '">' + (state.media[m.media_id] ? '<img src="' + state.media[m.media_id] + '" alt="Photo">' : "Loading photo…") + "</span>";
+      } else if (m.media_id) {
+        media = '<button type="button" class="adm-link wa-file" data-file="' + esc(m.media_id) + '">Open ' + esc(m.kind) + "</button>";
+      }
+      var showBody = !(m.media_id && /^\[(Photo|Sticker)\]$/.test(m.body || ""));
+      var who = m.direction === "out" && m.sent_by ? '<span class="wa-by">' + (m.sent_by === "system" ? "Automatic" : esc(m.sent_by.split("@")[0])) + "</span>" : "";
+      return '<div class="wa-msg wa-msg--' + m.direction + (m.kind === "otp" ? " wa-msg--otp" : "") + (m.status === "failed" ? " wa-msg--failed" : "") + '">' +
+        media + (showBody ? '<p>' + esc(m.body || "") + "</p>" : "") +
+        '<span class="wa-msg__meta">' + who + "<time>" + timeFmt.format(new Date(m.created_at)) + "</time>" + ticks(m) + "</span>" +
+        (m.status === "failed" && m.error ? '<span class="wa-msg__err">' + esc(m.error) + "</span>" : "") + "</div>";
+    }
+    function renderThread(scrollToEnd) {
+      var t = state.thread, box = $("#wa-msgs");
+      var nearEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+      var lastDay = "", html = "";
+      if (t.hasMore) html += '<button type="button" class="adm-link wa-older" id="wa-older">Show older messages</button>';
+      t.messages.forEach(function (m) {
+        var d = istDay(m.created_at);
+        if (d !== lastDay) { html += '<p class="wa-day"><span>' + (d === istDay(new Date().toISOString()) ? "Today" : d) + "</span></p>"; lastDay = d; }
+        html += bubble(m);
+      });
+      box.innerHTML = html || '<p class="adm-empty wa-pad">No messages yet.</p>';
+      if (scrollToEnd || nearEnd) box.scrollTop = box.scrollHeight;
+      $all("[data-media]", box).forEach(function (el) { if (!state.media[el.dataset.media]) loadMedia(el.dataset.media); });
+      var older = $("#wa-older");
+      if (older) older.addEventListener("click", loadOlder);
+
+      var c = t.contact, name = (t.member && t.member.name) || c.profile_name || pretty(c.wa_id);
+      $("#wa-name").textContent = name;
+      $("#wa-number").textContent = pretty(c.wa_id) + (c.profile_name && c.profile_name !== name ? " · ~" + c.profile_name : "");
+      $("#wa-avatar").textContent = name[0] && /[^+]/.test(name[0]) ? name[0].toUpperCase() : "#";
+      var open = c.windowOpen, w = $("#wa-window");
+      w.textContent = open ? "Can reply · " + hoursLeft(c.windowUntil) + "h left" : "Reply window closed";
+      w.dataset.open = String(!!open);
+      var note = $("#wa-note"), text = $("#wa-text"), send = $("#wa-send");
+      var optedOut = t.member && t.member.optedOut;
+      if (!open) {
+        note.textContent = c.last_in_at
+          ? "WhatsApp only allows free replies within 24 hours of their last message. You can reply again as soon as they message Turne."
+          : "They haven't messaged Turne yet, so WhatsApp doesn't allow a free reply. You can reply as soon as they send a message.";
+      } else if (optedOut) {
+        note.textContent = "This person replied STOP. Only message them if they've asked for it.";
+      }
+      note.hidden = open && !optedOut;
+      text.disabled = send.disabled = !open;
+      text.placeholder = open ? "Type a reply" : "Replies are closed for now";
+      renderInfo();
+    }
+    function renderInfo() {
+      var t = state.thread, c = t.contact, rows = [];
+      rows.push(["WhatsApp", '<a href="https://wa.me/' + esc(c.wa_id) + '" target="_blank" rel="noopener">' + esc(pretty(c.wa_id)) + "</a>"]);
+      if (c.profile_name) rows.push(["WhatsApp name", esc(c.profile_name)]);
+      rows.push(["Last message from them", c.last_in_at ? when(c.last_in_at) : "Never"]);
+      var html = '<h3>Contact</h3><dl class="adm-facts">' + rows.map(function (r) { return "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>"; }).join("") + "</dl>";
+      if (t.member) {
+        var m = t.member;
+        html += '<h3>Waitlist</h3><dl class="adm-facts"><dt>Name</dt><dd>' + esc(m.name) + "</dd><dt>Spot</dt><dd>#" + num.format(m.position) +
+          (m.premium ? ' <span class="adm-pill adm-pill--premium">2-Year Premium</span>' : "") + "</dd><dt>City</dt><dd>" + esc(m.city) +
+          "</dd><dt>Joined</dt><dd>" + when(m.joined) + "</dd>" + (m.optedOut ? '<dt>WhatsApp</dt><dd class="wa-warn">Opted out (replied STOP)</dd>' : "") + "</dl>";
+      } else {
+        html += '<h3>Waitlist</h3><p class="adm-empty">Not on the waitlist.</p>';
+      }
+      if (t.brands.length) {
+        html += "<h3>Brand " + (t.brands.length > 1 ? "enquiries" : "enquiry") + '</h3><ul class="wa-brands">' + t.brands.map(function (b) {
+          return "<li><b>" + esc(b.company) + "</b><span>" + (b.source === "registration" ? "Registration TB-" + String(b.id).padStart(5, "0") : "Enquiry") +
+            " · " + esc(STATUS[b.status] || b.status) + " · " + when(b.created_at) + "</span></li>";
+        }).join("") + "</ul>";
+      }
+      $("#wa-info").innerHTML = html;
+    }
+    function loadThread(waId, scrollToEnd) {
+      return call("GET", "/admin/wa/thread?wa_id=" + encodeURIComponent(waId)).then(function (t) {
+        if (state.cur !== waId) return;
+        var changed = !state.thread || state.thread.contact.wa_id !== waId || state.thread.messages.length !== t.messages.length ||
+          JSON.stringify(state.thread.messages.map(function (m) { return m.status; })) !== JSON.stringify(t.messages.map(function (m) { return m.status; }));
+        state.thread = t;
+        if (changed || scrollToEnd) renderThread(scrollToEnd);
+        if (t.contact.unread) markRead(waId);
+      });
+    }
+    function loadOlder() {
+      var t = state.thread, first = t.messages[0]; if (!first) return;
+      call("GET", "/admin/wa/thread?wa_id=" + encodeURIComponent(t.contact.wa_id) + "&before=" + first.id).then(function (o) {
+        var box = $("#wa-msgs"), h = box.scrollHeight;
+        state.thread.messages = o.messages.concat(state.thread.messages); state.thread.hasMore = o.hasMore;
+        renderThread(false); box.scrollTop = box.scrollHeight - h;
+      }).catch(fail);
+    }
+    function markRead(waId) {
+      call("POST", "/admin/wa/read", { wa_id: waId }).then(function () {
+        state.rows.forEach(function (r) { if (r.wa_id === waId) r.unread = 0; });
+        renderList(); loadSummary().catch(function () {});
+      }).catch(function () {});
+    }
+    function loadMedia(id) {
+      state.media[id] = state.media[id] || "";
+      call("GET", "/admin/wa/media?id=" + encodeURIComponent(id), null, true)
+        .then(function (res) { return res.blob(); })
+        .then(function (blob) {
+          state.media[id] = URL.createObjectURL(blob);
+          $all('[data-media="' + id + '"]').forEach(function (el) { el.innerHTML = '<img src="' + state.media[id] + '" alt="Photo">'; });
+        })
+        .catch(function (err) { $all('[data-media="' + id + '"]').forEach(function (el) { el.textContent = err.message || "Photo unavailable"; }); });
+    }
+    $("#wa-msgs").addEventListener("click", function (e) {
+      var f = e.target.closest("[data-file]"); if (!f) return;
+      call("GET", "/admin/wa/media?id=" + encodeURIComponent(f.dataset.file), null, true)
+        .then(function (res) { return res.blob(); })
+        .then(function (blob) { window.open(URL.createObjectURL(blob), "_blank", "noopener"); })
+        .catch(fail);
+    });
+    function openThread(waId) {
+      state.cur = waId; state.thread = null;
+      $("#wa-empty").hidden = true; $("#wa-chat").hidden = false;
+      $("#wa").dataset.mode = "thread";
+      $("#wa-msgs").innerHTML = '<p class="adm-empty wa-pad">Loading…</p>';
+      $("#wa-text").value = ""; autoGrow();
+      renderList();
+      loadThread(waId, true).catch(fail);
+      clearInterval(state.threadTimer);
+      state.threadTimer = setInterval(function () { if (!document.hidden && state.cur) loadThread(state.cur, false).catch(function () {}); }, 6000);
+    }
+    $("#wa-back").addEventListener("click", function () { $("#wa").dataset.mode = "list"; });
+    $("#wa-info-btn").addEventListener("click", function () {
+      var w = $("#wa"); w.dataset.mode = w.dataset.mode === "info" ? "thread" : "info";
+    });
+
+    /* ---- compose ---- */
+    var text = $("#wa-text");
+    function autoGrow() { text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, 180) + "px"; }
+    text.addEventListener("input", autoGrow);
+    text.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("#wa-compose").requestSubmit(); }
+    });
+    $("#wa-compose").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var body = text.value.trim(), waId = state.cur, btn = $("#wa-send");
+      if (!body || !waId) return;
+      btn.disabled = true; btn.textContent = "Sending…";
+      call("POST", "/admin/wa/send", { wa_id: waId, text: body }).then(function () {
+        text.value = ""; autoGrow();
+        return Promise.all([loadThread(waId, true), loadList(false)]);
+      }).catch(function (err) {
+        fail(err);
+        if (err.code === "window_closed") loadThread(waId, false).catch(function () {});
+      }).then(function () { btn.textContent = "Send"; btn.disabled = !(state.thread && state.thread.contact.windowOpen); text.focus(); });
+    });
+
+    /* ---- lifecycle ---- */
+    function refreshAll() {
+      return Promise.all([loadSummary(), loadList(false)]).catch(fail);
+    }
+    function open() {
+      refreshAll();
+      clearInterval(state.listTimer);
+      state.listTimer = setInterval(function () { if (!document.hidden) { loadSummary().catch(function () {}); if (!state.page) loadList(false).catch(function () {}); } }, 20000);
+    }
+    window.__waLeave = function () { clearInterval(state.listTimer); clearInterval(state.threadTimer); };
+    return { open: open, summary: loadSummary };
+  })();
+
   /* ---------------------------------------------------------------- activity */
   var lPage = 0;
-  var ACTIONS = { "member.update": "Edited member", "member.delete": "Deleted member", "enquiries.update": "Updated enquiry", "messages.update": "Updated message" };
+  var ACTIONS = { "whatsapp.send": "Sent WhatsApp message", "member.update": "Edited member", "member.delete": "Deleted member", "enquiries.update": "Updated enquiry", "messages.update": "Updated message" };
   function detailText(d) {
     return Object.keys(d || {}).map(function (k) {
       var v = d[k];

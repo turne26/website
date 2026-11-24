@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError, getAttribution } from "@/lib/api";
 import { config } from "@/lib/config";
+import { CityPicker } from "@/components/CityPicker";
 import { BRANDS_EMAIL, CATEGORIES, INTERESTS, SIZES, TIMELINES } from "@/lib/brands";
 
 type Step = 0 | 1 | 2 | 3;
@@ -249,8 +250,7 @@ export function RegisterForm() {
                 </div>
                 <div className="field">
                   <label htmlFor="city">City</label>
-                  <input className="input" id="city" name="city" autoComplete="address-level2" placeholder="e.g. Bengaluru"
-                    value={r.city} onChange={(e) => set("city", e.target.value)} {...aria("city")} />
+                  <CityPicker id="city" name="city" value={r.city} onChange={(c) => set("city", c)} {...aria("city")} />
                   {err("city")}
                 </div>
               </div>
