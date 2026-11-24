@@ -16,7 +16,7 @@ window.TURNE_CONFIG = {
   supabaseKey: "sb_publishable_2apziPEw2O-azDBFNEQhSQ_90hyvAtx",
   launchAt: "2027-01-26T10:00:00+05:30",
   premiumLimit: 10000,
-  siteUrl: "https://turne.in",
+  siteUrl: "https://www.turne.in",
   // Shown until the first /stats response arrives (and in mock mode).
   fallbackStats: { waitlistCount: 1121 },
   // How often the live counters refresh, in ms. 0 disables polling.
