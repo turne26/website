@@ -195,7 +195,7 @@
         tile("Members", num.format(o.members), "+" + num.format(o.today) + " today") +
         tile("Last 7 days", num.format(o.last7), "new sign-ups") +
         tile("Premium spots left", num.format(left), num.format(o.premium) + " of " + num.format(o.premiumLimit) + " taken", o.premium / o.premiumLimit * 100) +
-        tile("SMS sent today", num.format(o.smsToday), num.format(o.smsTotal) + " in total") +
+        tile("Codes sent today", num.format(o.smsToday), num.format(o.smsTotal) + " in total") +
         tile("Codes verified", rate, num.format(o.verifiedTotal) + " of " + num.format(o.smsTotal) + " codes") +
         tile("Needs a reply", num.format(o.enquiriesNew + o.messagesNew), num.format(o.enquiriesNew) + " enquiries · " + num.format(o.messagesNew) + " messages");
       renderChart(o.daily || []);

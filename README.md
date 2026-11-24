@@ -18,7 +18,7 @@ src/
     js/config.js  <- the only file to edit when connecting the backend
     js/api.js     every network call lives here (with a mock mode)
     js/site.js    menu, live counters, countdown, UTM/referral capture
-    js/join.js    SMS OTP signup flow
+    js/join.js    WhatsApp OTP signup flow
     js/forms.js   brand enquiry + contact forms
     js/explainer.js  the 3D "How a Turne event works" animation (How it works)
     fonts/        self-hosted Plus Jakarta Sans (woff2)
@@ -59,7 +59,7 @@ On Vercel, import the repo with the default settings: the root `vercel.json` (al
 | `/brands/` | For brands | Capabilities and enquiry form |
 | `/faq/` | FAQ | 12 questions, FAQPage schema |
 | `/contact/` | Contact | Three inboxes and a contact form |
-| `/join/` | Join the waitlist | 4-step SMS OTP signup |
+| `/join/` | Join the waitlist | 4-step WhatsApp OTP signup |
 | `/privacy/`, `/terms/` | Legal | Full text from the current site |
 | `/404.html` | Not found | `noindex` |
 
@@ -95,11 +95,27 @@ supabase functions deploy api --no-verify-jwt
 
 Then set `apiBase` in `src/assets/js/config.js` to `https://<ref>.supabase.co/functions/v1/api`, run `python3 src/build.py` and push.
 
-The function starts in **test mode**: no message is sent, the code is always `123456`, and the site shows the test-code hint. Real codes go through [Message Central VerifyNow](https://www.messagecentral.com/product/verify-now/api), which generates, delivers and checks the code (the backend stores only its `verificationId`). To switch it on, fill in `supabase/functions/.env` (copy it from `.env.example` next to it; git ignores the real one) with `OTP_MODE=messagecentral`, `MC_CUSTOMER_ID`, `MC_PASSWORD` and `MC_FLOW=SMS`, and upload it:
+The function starts in **test mode**: no message is sent, the code is always `123456`, and the site shows the test-code hint. Real codes go out on **WhatsApp through Meta's Cloud API**: the function generates a random 6-digit code, stores only its hash, and sends it with an approved Authentication template.
+
+#### Setting up WhatsApp OTP (one time)
+
+1. **Meta app.** At [developers.facebook.com](https://developers.facebook.com/apps) create an app of type *Business*, attach your Business portfolio, and add the **WhatsApp** product.
+2. **Phone number.** In WhatsApp → API Setup, add and verify the number Turne will send from (it must not be registered on the WhatsApp app). Copy its **Phone number ID**.
+3. **Business verification.** Business Settings → Security Center → verify your business. Until then you can only message a few numbers and only 250 people a day.
+4. **Display name.** Set a display name (e.g. "Turne") and wait for its approval.
+5. **Payment method.** WhatsApp Manager → Payment settings: add a card. Authentication messages are billed per delivered message.
+6. **Template.** WhatsApp Manager → Message templates → Create → category **Authentication** → *Copy code*. Name it `turne_otp`, language **English (en)**, tick "Add security recommendation" and "Expiration: 10 minutes" if you like, and submit. Use those exact name/language values in `WA_TEMPLATE` / `WA_TEMPLATE_LANG`.
+7. **Permanent token.** Business Settings → Users → System users → add an *Admin* system user → Assign assets (your app and WhatsApp account, full control) → Generate token with `whatsapp_business_messaging` and `whatsapp_business_management`, expiry *Never*. That's `WA_ACCESS_TOKEN`.
+8. **Webhook.** App dashboard → WhatsApp → Configuration → Webhook → Edit. Callback URL `https://<ref>.supabase.co/functions/v1/api/whatsapp/webhook`, Verify token = your `WA_VERIFY_TOKEN`. Deploy the function with that secret set *before* clicking Verify and save. Then under Webhook fields, **Subscribe** to `messages`. Meta only sends real (non-test) events once the app is **published** (App dashboard → Publish). The webhook logs failed code deliveries and stores STOP/START replies in `members.whatsapp_opted_out_at`.
+9. **Secrets.** Copy `supabase/functions/.env.example` to `supabase/functions/.env` (git ignores it) and fill in `OTP_MODE=whatsapp`, `WA_ACCESS_TOKEN`, `WA_PHONE_NUMBER_ID`, `WA_TEMPLATE`, `WA_TEMPLATE_LANG`, `WA_VERIFY_TOKEN`, `WA_APP_SECRET` and `OTP_PEPPER` (`openssl rand -hex 32`). Upload them:
 
 ```bash
 supabase secrets set --env-file supabase/functions/.env
 ```
+
+Then apply the migration and redeploy: `supabase db push && supabase functions deploy api --no-verify-jwt`.
+
+While the Meta app is still in development, WhatsApp only delivers to numbers added under API Setup → "To" (up to 5); others fail with error 131030 and the site says it couldn't reach the number. If sends fail, the function logs Meta's error (Supabase → Edge Functions → api → Logs): `190` = token expired/invalid, `132001` = template name or language doesn't match an approved template, `131026` = the number isn't on WhatsApp.
 
 Other optional secrets, all listed in `.env.example`: `LAUNCH_AT` (overrides the countdown date), `PREMIUM_LIMIT` (10000), `MIN_AGE` (13), `ALLOWED_ORIGINS` (extra CORS origins; `turne.in`, `www.turne.in`, `*.vercel.app` and localhost are already allowed).
 
@@ -112,7 +128,7 @@ Set `apiBase` in `assets/js/config.js` (for example `"https://api.turne.in/v1"`)
 All requests are JSON with `credentials: "include"`. Allow CORS from `https://turne.in` if the API is on another origin. Errors should return a non-2xx status with:
 
 ```json
-{ "error": { "code": "otp_invalid", "message": "That code doesn't match. Check the SMS and try again." } }
+{ "error": { "code": "otp_invalid", "message": "That code doesn't match. Check WhatsApp and try again." } }
 ```
 
 `message` is shown to the person as-is, so write it for them.
@@ -127,7 +143,7 @@ Feeds every live number on the site (tally, spots left, % claimed, countdown). I
 ```json
 { "phone": "9876543210" }
 ```
-→ `{ "ok": true, "resendAfter": 30 }`. The phone number is 10 digits with no country code (+91 is implied). Send the code by SMS. Enforce rate limits (Privacy §6). Error codes the UI expects: `invalid_phone`, `rate_limited`, `already_registered` (409: the number is already on the waitlist, so no SMS is sent).
+→ `{ "ok": true, "resendAfter": 30 }`. The phone number is 10 digits with no country code (+91 is implied). Send the code on WhatsApp. Enforce rate limits (Privacy §6). Error codes the UI expects: `invalid_phone`, `rate_limited`, `already_registered` (409: the number is already on the waitlist, so no message is sent).
 
 ### POST `/otp/verify`
 ```json

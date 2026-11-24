@@ -4,12 +4,17 @@
  * config.js points to. Endpoint contract: README.md ("Backend integration").
  *
  * Secrets (supabase secrets set NAME=value):
- *   OTP_MODE            "test" (default: every code is 123456, nothing is sent) or "messagecentral"
- *   MC_CUSTOMER_ID      Message Central customer ID, e.g. C-1234ABCD  (OTP_MODE=messagecentral)
- *   MC_AUTH_TOKEN       Auth token from the Message Central console (optional if MC_PASSWORD is set)
- *   MC_PASSWORD         Message Central account password (plain; it's base64-encoded here).
- *                       Used to get a token when MC_AUTH_TOKEN is empty or expired.
- *   MC_FLOW             "SMS" (default) or "WHATSAPP": the channel VerifyNow delivers the code on
+ *   OTP_MODE            "test" (default: every code is 123456, nothing is sent) or "whatsapp"
+ *   WA_ACCESS_TOKEN     Permanent System User access token (Meta Business Settings), with
+ *                       whatsapp_business_messaging permission          (OTP_MODE=whatsapp)
+ *   WA_PHONE_NUMBER_ID  Phone number ID of the sending number (WhatsApp Manager -> API Setup)
+ *   WA_TEMPLATE         Name of the approved Authentication template (default "turne_otp")
+ *   WA_TEMPLATE_LANG    Template language code (default "en")
+ *   WA_GRAPH_VERSION    Graph API version (default "v23.0")
+ *   WA_VERIFY_TOKEN     Any random string; paste the same value as "Verify token" in the Meta
+ *                       app's WhatsApp -> Configuration -> Webhook
+ *   WA_APP_SECRET       App secret (App settings -> Basic), used to check webhook signatures
+ *   OTP_PEPPER          Random secret mixed into stored code hashes
  *   ADMIN_EMAILS        Comma-separated emails allowed into the /admin/ panel (Supabase Auth users)
  *   ALLOWED_ORIGINS     Comma-separated extra origins allowed by CORS
  *   LAUNCH_AT           ISO launch moment for the countdown; omit to use config.js
@@ -113,83 +118,132 @@ function ageOn(dob: Date) {
   return a;
 }
 
-/* ------------------------------------------------------------ Message Central */
-// VerifyNow generates, delivers and checks the code itself. We keep only its verificationId.
-// Docs: https://www.messagecentral.com/product/verify-now/api
+/* ------------------------------------------------------- WhatsApp (Meta Cloud API) */
+// We generate the code, store only its hash, and deliver it with an approved Authentication
+// template (body "{{1}} is your verification code." + a "Copy code" button).
+// Docs: https://developers.facebook.com/docs/whatsapp/business-management-api/authentication-templates
 
-const MC_BASE = "https://cpaas.messagecentral.com";
-const MC_FLOW = env("MC_FLOW", "SMS").toUpperCase();
-let mcToken: string | null = null;
+const WA_VERSION = env("WA_GRAPH_VERSION", "v23.0");
+const WA_TEMPLATE = env("WA_TEMPLATE", "turne_otp");
+const WA_LANG = env("WA_TEMPLATE_LANG", "en");
 
-type McResult = { httpStatus: number; code: number; data: Record<string, unknown> };
+/** A uniformly random 6-digit code (no modulo bias). */
+function newCode() {
+  const a = new Uint32Array(1);
+  do crypto.getRandomValues(a); while (a[0] >= 4_294_000_000);
+  return String(a[0] % 1_000_000).padStart(6, "0");
+}
 
-async function mcAuthToken(fresh = false) {
-  if (mcToken && !fresh) return mcToken;
-  // A token pasted from the Message Central console is used as is until it stops working.
-  if (!fresh && env("MC_AUTH_TOKEN")) return (mcToken = env("MC_AUTH_TOKEN"));
-  if (!env("MC_PASSWORD")) throw new Error("Message Central token rejected and no MC_PASSWORD to renew it");
-  const q = new URLSearchParams({
-    customerId: env("MC_CUSTOMER_ID"),
-    key: btoa(env("MC_PASSWORD")),
-    scope: "NEW",
-    country: "91",
+/** Sends `code` to +91 `phone` on WhatsApp and returns Meta's message id (wamid). */
+async function waSend(phone: string, code: string) {
+  if (!env("WA_ACCESS_TOKEN") || !env("WA_PHONE_NUMBER_ID")) {
+    throw new Error("OTP_MODE=whatsapp but WA_ACCESS_TOKEN / WA_PHONE_NUMBER_ID are not set");
+  }
+  const res = await fetch(`https://graph.facebook.com/${WA_VERSION}/${env("WA_PHONE_NUMBER_ID")}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${env("WA_ACCESS_TOKEN")}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: `91${phone}`,
+      type: "template",
+      template: {
+        name: WA_TEMPLATE,
+        language: { code: WA_LANG },
+        components: [
+          { type: "body", parameters: [{ type: "text", text: code }] },
+          // The copy-code button of an Authentication template carries the code too.
+          { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: code }] },
+        ],
+      },
+    }),
   });
-  const res = await fetch(`${MC_BASE}/auth/v1/authentication/token?${q}`, { headers: { accept: "*/*" } });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok || !body.token) {
-    console.error("message central auth failed", res.status, JSON.stringify(body));
-    throw new Error("Message Central auth failed");
+  const id = body?.messages?.[0]?.id;
+  if (res.ok && id) return String(id);
+
+  const err = body?.error ?? {};
+  console.error("whatsapp send failed", res.status, JSON.stringify(err));
+  const c = Number(err.code);
+  // 130429 throughput, 131056 too many messages to this number, 80007/4/80008 account limits.
+  if ([130429, 131056, 80007, 80008, 4].includes(c)) {
+    throw new Fail("rate_limited", "Too many codes requested. Try again in a few minutes.", 429);
   }
-  return (mcToken = body.token as string);
+  // 131026 undeliverable (not on WhatsApp, old app, or hasn't accepted terms); 131030 not in
+  // the test recipient list while the app is in development; 131009/100 bad number.
+  if ([131026, 131030, 131009, 100].includes(c)) {
+    throw new Fail("send_failed", "We couldn't reach this number on WhatsApp. Check it's your WhatsApp number and try again.", 502);
+  }
+  // Anything else (expired token 190, missing template 132001, ...) is our problem, not theirs.
+  throw new Fail("send_failed", "We couldn't send the code right now. Try again in a minute.", 502);
 }
 
-/** Calls VerifyNow; on an auth error, gets a new token once and retries. */
-async function mc(method: "GET" | "POST", path: string, params: Record<string, string>): Promise<McResult> {
-  const url = `${MC_BASE}${path}?${new URLSearchParams({ customerId: env("MC_CUSTOMER_ID"), ...params })}`;
-  for (let attempt = 0; ; attempt++) {
-    const res = await fetch(url, { method, headers: { authToken: await mcAuthToken(attempt > 0) } });
-    if ((res.status === 401 || res.status === 403) && attempt === 0) continue;
-    const body = await res.json().catch(() => ({}));
-    const data = (body.data ?? {}) as Record<string, unknown>;
-    const code = Number(data.responseCode ?? body.responseCode ?? res.status);
-    if (code !== 200) console.error("message central", path, res.status, JSON.stringify(body));
-    return { httpStatus: res.status, code, data };
+/* ------------------------------------------------------------ WhatsApp webhook */
+// Callback URL: https://<project>.supabase.co/functions/v1/api/whatsapp/webhook
+// GET  = Meta's one-time verification handshake.
+// POST = message status updates and incoming messages, signed with the app secret.
+
+function waVerify(req: Request) {
+  const q = new URL(req.url).searchParams;
+  const token = env("WA_VERIFY_TOKEN");
+  if (q.get("hub.mode") === "subscribe" && token && q.get("hub.verify_token") === token) {
+    return new Response(q.get("hub.challenge") ?? "", { status: 200, headers: { "Content-Type": "text/plain" } });
   }
+  return new Response("Forbidden", { status: 403 });
 }
 
-/** Sends a code and returns VerifyNow's verificationId plus its resend window in seconds. */
-async function mcSend(phone: string) {
-  const r = await mc("POST", "/verification/v3/send", {
-    countryCode: "91",
-    mobileNumber: phone,
-    flowType: MC_FLOW,
-    otpLength: "6",
-  });
-  if (r.code === 506) {
-    throw new Fail("rate_limited", "A code is already on its way. Wait a minute before asking for another.", 429);
-  }
-  if (r.code === 800) throw new Fail("rate_limited", "Too many codes requested. Try again later.", 429);
-  if (r.code !== 200 || !r.data.verificationId) {
-    throw new Fail("send_failed", "We couldn't send the code. Check the number and try again.", 502);
-  }
-  return { verificationId: String(r.data.verificationId), timeout: Number(r.data.timeout) || 0 };
+async function validSignature(raw: string, header: string | null) {
+  const secret = env("WA_APP_SECRET");
+  if (!secret || !header?.startsWith("sha256=")) return false;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(raw)));
+  const hex = Array.from(mac, (b) => b.toString(16).padStart(2, "0")).join("");
+  const got = header.slice(7);
+  if (got.length !== hex.length) return false;
+  let diff = 0;
+  for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ got.charCodeAt(i);
+  return diff === 0;
 }
 
-async function mcValidate(phone: string, verificationId: string, code: string) {
-  const r = await mc("GET", "/verification/v3/validateOtp", {
-    countryCode: "91",
-    mobileNumber: phone,
-    verificationId,
-    code,
-    flowType: MC_FLOW,
-  });
-  if (r.code === 200 && r.data.verificationStatus === "VERIFICATION_COMPLETED") return;
-  if (r.code === 702) throw new Fail("otp_invalid", "That code doesn't match. Check the SMS and try again.");
-  if (r.code === 705 || r.code === 703 || r.code === 505) {
-    throw new Fail("otp_expired", "That code has expired. Send a new one.");
+const STOP_WORDS = new Set(["stop", "unsubscribe", "stop all", "cancel"]);
+const START_WORDS = new Set(["start", "subscribe", "unstop"]);
+
+/** Indian +91 numbers come in as "91XXXXXXXXXX"; we store the 10-digit form. */
+const localPhone = (waId: string) => (/^91[6-9]\d{9}$/.test(waId) ? waId.slice(2) : null);
+
+async function waWebhook(req: Request) {
+  const raw = await req.text();
+  if (!(await validSignature(raw, req.headers.get("x-hub-signature-256")))) {
+    console.error("whatsapp webhook: bad or missing signature");
+    return new Response("Bad signature", { status: 401 });
   }
-  if (r.code === 800) throw new Fail("otp_locked", "Too many attempts. Send a new code.", 429);
-  throw new Error(`Message Central validate failed: ${r.code}`);
+  let payload: any;
+  try { payload = JSON.parse(raw); } catch { return new Response("ok"); }
+
+  for (const entry of payload?.entry ?? []) {
+    for (const change of entry?.changes ?? []) {
+      const v = change?.value ?? {};
+      for (const st of v.statuses ?? []) {
+        // Only failures are interesting: e.g. 131026 = number not on WhatsApp.
+        if (st.status === "failed") {
+          console.error("whatsapp delivery failed", st.id, st.recipient_id, JSON.stringify(st.errors ?? []));
+        }
+      }
+      for (const msg of v.messages ?? []) {
+        const text = String(msg?.text?.body ?? msg?.button?.text ?? "").trim().toLowerCase();
+        const phone = localPhone(String(msg?.from ?? ""));
+        if (!phone) continue;
+        if (STOP_WORDS.has(text)) {
+          must(await db.from("members").update({ whatsapp_opted_out_at: new Date().toISOString() }).eq("phone", phone));
+        } else if (START_WORDS.has(text)) {
+          must(await db.from("members").update({ whatsapp_opted_out_at: null }).eq("phone", phone));
+        }
+      }
+    }
+  }
+  // Always 200 quickly, or Meta retries the same event for days.
+  return new Response("ok");
 }
 
 /* ------------------------------------------------------------------ endpoints */
@@ -206,7 +260,7 @@ async function otpSend(body: Record<string, unknown>, ip: string | null) {
   const phone = str(body.phone, 20);
   if (!isPhone(phone)) throw new Fail("invalid_phone", "Enter a 10-digit Indian mobile number.");
 
-  // Already registered: say so and spend no SMS. Only the fact that it's registered is
+  // Already registered: say so and spend no message. Only the fact that it's registered is
   // revealed; the spot, name and invite code still need the OTP (see otpVerify).
   const member = must(await db.from("members").select("id").eq("phone", phone).maybeSingle());
   if (member) throw new Fail("already_registered", ALREADY_REGISTERED, 409);
@@ -220,22 +274,21 @@ async function otpSend(body: Record<string, unknown>, ip: string | null) {
     throw new Fail("rate_limited", "Too many codes requested. Try again in an hour.", 429);
   }
 
-  const test = OTP_MODE !== "messagecentral";
-  const sent = test ? null : await mcSend(phone);
+  const test = OTP_MODE !== "whatsapp";
+  const code = test ? "123456" : newCode();
+  const messageId = test ? null : await waSend(phone, code);
 
   must(await db.from("otp_codes").upsert({
     phone,
-    // Test mode checks the code locally; Message Central checks it on their side.
-    code_hash: test ? await sha256(`${PEPPER}:${phone}:123456`) : null,
-    provider_ref: sent?.verificationId ?? null,
+    code_hash: await sha256(`${PEPPER}:${phone}:${code}`),
+    provider_ref: messageId,
     attempts: 0,
     expires_at: new Date(Date.now() + OTP_TTL_MIN * 60_000).toISOString(),
     sent_at: new Date().toISOString(),
   }));
   must(await db.from("otp_sends").insert({ phone, ip }));
 
-  const resendAfter = Math.max(RESEND_AFTER_S, sent?.timeout ?? 0);
-  return test ? { ok: true, resendAfter, mock: true } : { ok: true, resendAfter };
+  return test ? { ok: true, resendAfter: RESEND_AFTER_S, mock: true } : { ok: true, resendAfter: RESEND_AFTER_S };
 }
 
 async function otpVerify(body: Record<string, unknown>) {
@@ -250,12 +303,10 @@ async function otpVerify(body: Record<string, unknown>) {
   if (rec.attempts >= OTP_MAX_TRIES) {
     throw new Fail("otp_locked", "Too many attempts. Send a new code.", 429);
   }
-  if (!/^\d{4,8}$/.test(code)) throw new Fail("otp_invalid", "That code doesn't match. Check the SMS and try again.");
+  if (!/^\d{4,8}$/.test(code)) throw new Fail("otp_invalid", "That code doesn't match. Check WhatsApp and try again.");
   must(await db.from("otp_codes").update({ attempts: rec.attempts + 1 }).eq("phone", phone));
-  if (rec.provider_ref) {
-    await mcValidate(phone, rec.provider_ref, code);
-  } else if ((await sha256(`${PEPPER}:${phone}:${code}`)) !== rec.code_hash) {
-    throw new Fail("otp_invalid", "That code doesn't match. Check the SMS and try again.");
+  if ((await sha256(`${PEPPER}:${phone}:${code}`)) !== rec.code_hash) {
+    throw new Fail("otp_invalid", "That code doesn't match. Check WhatsApp and try again.");
   }
   must(await db.from("otp_codes").delete().eq("phone", phone));
 
@@ -580,6 +631,10 @@ Deno.serve(async (req) => {
       return json(req, await stats(), 200, { "Cache-Control": "public, max-age=20" });
     }
     if (path === "/admin" || path.startsWith("/admin/")) return await adminRoute(req, path);
+    if (path === "/whatsapp/webhook") {
+      if (req.method === "GET") return waVerify(req);
+      if (req.method === "POST") return await waWebhook(req);
+    }
     if (req.method !== "POST") throw new Fail("not_found", "Not found.", 404);
 
     let body: Record<string, unknown>;

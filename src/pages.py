@@ -324,7 +324,7 @@ FAQ_GROUPS = [
         ("Which cities can join?", "Anyone in India can join the waitlist. Experiences will roll out city by city."),
     ]),
     ("The waitlist", [
-        ("How do I join?", "Verify your mobile number with the 6-digit code we send by SMS, add your name, date of birth and city, then tap Join the waitlist. It takes well under a minute."),
+        ("How do I join?", "Verify your mobile number with the 6-digit code we send on WhatsApp, add your name, date of birth and city, then tap Join the waitlist. It takes well under a minute."),
         ("What do I get for joining?", "The first 10,000 verified waitlist members receive Lifetime Premium membership."),
         ("Can I register more than one number?", "Each mobile number can hold one waitlist entry. If you register the same number again, you'll see your existing spot."),
         ("Will you share my number with brands?", "No. We don't sell your personal information, and we don't share your phone number with brands or advertisers. See our <a href=\"{{u:privacy}}\">privacy policy</a>."),
@@ -455,21 +455,21 @@ page(
       </ol>
 
       <form id="step-phone" novalidate>
-        <h2>What's your mobile number?</h2>
-        <p>We'll text you a 6-digit code to confirm it's really you. No spam, ever.</p>
+        <h2>What's your WhatsApp number?</h2>
+        <p>We'll send a 6-digit code on WhatsApp to confirm it's really you. No spam, ever.</p>
         <div class="form">
           <div class="field">
-            <label for="wa-number">Mobile number</label>
+            <label for="wa-number">WhatsApp number</label>
             <div class="phone-input"><span class="prefix">+91</span><input class="input" id="wa-number" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="98765 43210" maxlength="14" aria-describedby="phone-error"></div>
             <p class="error" id="phone-error" hidden></p>
           </div>
           <button class="btn btn--ticket btn--block" type="submit">Send code</button>
-          <p class="consent">By continuing you agree to our <a href="{{{{u:terms}}}}">Terms</a> and <a href="{{{{u:privacy}}}}">Privacy policy</a>, and to receive a verification code by SMS and WhatsApp messages from Turne about your waitlist spot.</p>
+          <p class="consent">By continuing you agree to our <a href="{{{{u:terms}}}}">Terms</a> and <a href="{{{{u:privacy}}}}">Privacy policy</a>, and to receive a verification code and messages on WhatsApp from Turne about your waitlist spot.</p>
         </div>
       </form>
 
       <form id="step-otp" novalidate hidden>
-        <h2>Check your SMS.</h2>
+        <h2>Check your WhatsApp.</h2>
         <p>Enter the 6-digit code we sent to <b id="otp-target" style="color:var(--paper)">your number</b>.</p>
         <div class="form">
           <fieldset class="field" style="border:0;padding:0;margin:0">
