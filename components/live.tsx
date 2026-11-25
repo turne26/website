@@ -11,12 +11,13 @@ import { config } from "@/lib/config";
 const fmt = new Intl.NumberFormat("en-IN");
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-type StatsState = { count: number; limit: number; launchAt: string; live: number };
+type StatsState = { count: number; limit: number; launchAt: string; live: number; nextSpot: number };
 const StatsCtx = createContext<StatsState>({
   count: config.fallbackStats.waitlistCount,
   limit: config.premiumLimit,
   launchAt: config.launchAt,
   live: 0,
+  nextSpot: config.fallbackStats.nextSpot,
 });
 const NowCtx = createContext<number | null>(null);
 
@@ -26,6 +27,7 @@ export function StatsProvider({ children }: { children: React.ReactNode }) {
     limit: config.premiumLimit,
     launchAt: config.launchAt,
     live: 0,
+    nextSpot: config.fallbackStats.nextSpot,
   });
   const [now, setNow] = useState<number | null>(null);
 
@@ -39,6 +41,8 @@ export function StatsProvider({ children }: { children: React.ReactNode }) {
           limit: Number(s.premiumLimit) || config.premiumLimit,
           launchAt: s.launchAt || prev.launchAt,
           live: prev.live + 1,
+          // Spot numbers continue from 1020, so "next" comes from the server, not count + 1.
+          nextSpot: Number(s.nextSpot) || Math.max(0, Number(s.waitlistCount) || 0) + 1,
         }));
       }).catch(() => { /* keep the numbers we have */ });
     load();
@@ -71,7 +75,7 @@ export function useStats() {
       remaining,
       values: {
         count: fmt.format(s.count),
-        next: fmt.format(s.count + 1),
+        next: fmt.format(s.nextSpot),
         remaining: fmt.format(remaining),
         limit: fmt.format(s.limit),
         percent: Math.min(100, (s.count / s.limit) * 100).toFixed(2) + "%",

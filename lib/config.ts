@@ -12,7 +12,7 @@ export const config = {
   premiumLimit: 10000,
   siteUrl: "https://www.turne.in",
   // Shown until the first /stats response arrives (and in mock mode).
-  fallbackStats: { waitlistCount: 1121 },
+  fallbackStats: { waitlistCount: 1121, nextSpot: 1020 },
   // How often the live counters refresh, in ms. 0 disables polling.
   statsRefreshMs: 60000,
   otpLength: 6,

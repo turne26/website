@@ -11,7 +11,7 @@ export default function JoinContent() {
 <div className="stack-lg">
 <h1 style={{ fontSize: "clamp(2.16rem,5.6vw,4.42rem)" }}>Join the waitlist.</h1>
 <p className="lede">It takes under a minute. The first 10,000 verified members get 2 years of Premium free.</p>
-<div className="ticket" role="img" aria-label="Your next waitlist spot is number 1,122">
+<div className="ticket" role="img" aria-label="Your next waitlist spot">
 <div className="ticket__main">
 <div className="ticket__brand"><b>TURNE</b><span>Early access</span></div>
 <div className="ticket__title">2-Year Premium pass</div>

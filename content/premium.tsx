@@ -13,7 +13,7 @@ export default function PremiumContent() {
 <p className="lede">Be one of the first 10,000 verified members and get two years of Turne Premium, free from launch day. No payment, no catch. You were early.</p>
 <div className="cta-row"><Link className="btn btn--ticket" href="/join/">Claim my spot</Link><span className="small muted"><Stat k="remaining" className="num" />{" "}spots left</span></div>
 </div>
-<div className="ticket ticket--premium" role="img" aria-label="Your next waitlist spot is number 1,122">
+<div className="ticket ticket--premium" role="img" aria-label="Your next waitlist spot">
 <div className="ticket__main">
 <div className="ticket__brand"><b>TURNE</b><span>Early access</span></div>
 <div className="ticket__title">2-Year Premium pass</div>

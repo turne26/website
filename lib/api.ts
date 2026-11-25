@@ -21,7 +21,7 @@ export class ApiError extends Error {
   }
 }
 
-export type Stats = { waitlistCount: number; premiumLimit?: number; launchAt?: string };
+export type Stats = { waitlistCount: number; premiumLimit?: number; launchAt?: string; nextSpot?: number };
 export type Entry = { position: number; premium: boolean; inviteCode: string; name?: string };
 type Json = Record<string, unknown>;
 

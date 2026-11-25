@@ -329,7 +329,9 @@ async function waWebhook(req: Request) {
 async function stats() {
   const { count, error } = await db.from("members").select("id", { count: "exact", head: true });
   if (error) throw new Error(error.message);
-  const out: Record<string, unknown> = { waitlistCount: count ?? 0, premiumLimit: PREMIUM_LIMIT };
+  const next = await db.rpc("turne_next_spot");
+  if (next.error) throw new Error(next.error.message);
+  const out: Record<string, unknown> = { waitlistCount: count ?? 0, premiumLimit: PREMIUM_LIMIT, nextSpot: next.data };
   if (env("LAUNCH_AT")) out.launchAt = env("LAUNCH_AT");
   return out;
 }
