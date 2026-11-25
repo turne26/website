@@ -16,7 +16,7 @@ const FACTS = `- Turne is an online event platform from India ("India ka Apna Ev
 - Turne has not launched yet. The planned launch is ${launch}; the date may change.
 - Founding offer: the first ${config.premiumLimit.toLocaleString("en-IN")} people to verify their WhatsApp number on the waitlist get Turne Premium free for 2 years (24 months from launch day).
 - Joining the waitlist takes under a minute at ${SITE}/join/: verify a WhatsApp number with a 6-digit code sent on WhatsApp, then add name, date of birth and city. Minimum age ${config.minAge}. Indian (+91) numbers only.
-- Brands register for free at ${SITE}/brands/register/ (WhatsApp-verified, about two minutes) to run events, product launches, startup rooms and giveaways; the brands team replies within two working days.
+- Brands register for free at ${SITE}/brands/register/ (WhatsApp-verified, about two minutes) to run events, product launches and startup rooms; every event includes a free-to-enter giveaway. The brands team replies within two working days.
 - Contact: support@turne.in (support), hello@turne.in (general), brands@turne.in (brand partnerships), privacy@turne.in (data and privacy).`;
 
 const ORDER: PageKey[] = ["home", "how-it-works", "why-turne", "premium", "giveaways", "join", "brands", "brands-register", "faq", "contact", "terms", "privacy"];

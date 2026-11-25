@@ -1028,3 +1028,22 @@ p { margin: 0; }
 .city-list li.is-active { background: color-mix(in srgb, var(--lime) 14%, var(--ink-2)); }
 .city-list li.is-active b { color: var(--lime); }
 .city-list .city-list__head { cursor: default; padding: .45rem .8rem .25rem; font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* ---------- join page on phones: a slim ticket, so the form is on the first screen ---------- */
+@media (max-width: 760px) {
+  .join { gap: 1.25rem; }
+  .join .stack-lg > * + * { margin-top: 1rem; }
+  .join .ticket { transform: none; }
+  .join .ticket__main { padding: .8rem 1rem .85rem; gap: .5rem; }
+  .join .ticket__brand b { font-size: .9rem; }
+  .join .ticket__title { font-size: 1.15rem; }
+  .join .ticket__rows { padding-top: .5rem; gap: .5rem; }
+  .join .ticket__rows dd { font-size: .95rem; }
+  .join .ticket__barcode, .join .ticks, .join .ticks-key { display: none; }
+  .join .ticket__stub { padding: .5rem .35rem; }
+  .join .ticket__stub span { font-size: 1.05rem; }
+  .join .panel { padding: 1.25rem 1rem 1.5rem; }
+  .join .steps { margin-bottom: 1.1rem; }
+  .join .panel h2 { font-size: 1.6rem; margin-bottom: .5rem; }
+  .join .panel h2 + p { margin-bottom: 1.1rem; }
+}

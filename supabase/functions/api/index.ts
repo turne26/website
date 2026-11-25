@@ -503,7 +503,7 @@ async function brandRegister(body: Record<string, unknown>, ip: string | null) {
     company_size: pick(body.company_size, BRAND_SIZES),
     name: str(body.name, 100),
     role: str(body.role, 100),
-    email: str(body.email, 200),
+    email: str(body.email, 200) || null,
     phone: "",
     interests,
     timeline: pick(body.timeline, BRAND_TIMELINES),
@@ -514,9 +514,8 @@ async function brandRegister(body: Record<string, unknown>, ip: string | null) {
   if (!row.company || !row.website_url || !row.category || !row.city) {
     throw new Fail("invalid_form", "Add your brand name, website or Instagram, category and city.");
   }
-  if (!row.name || !row.role || !isEmail(row.email)) {
-    throw new Fail("invalid_form", "Add your name, role and a valid work email.");
-  }
+  if (!row.name || !row.role) throw new Fail("invalid_form", "Add your name and role.");
+  if (row.email && !isEmail(row.email)) throw new Fail("invalid_form", "Check the email, or leave it empty.");
   if (!interests.length) throw new Fail("invalid_form", "Pick at least one thing you'd like to run on Turne.");
   if (body.consent !== true) throw new Fail("invalid_form", "Please agree to be contacted about your registration.");
   if ((await countLastHour("brand_enquiries", "created_at", "ip", ip)) >= FORMS_PER_IP_HOUR) {

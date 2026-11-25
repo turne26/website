@@ -328,7 +328,7 @@
     }).join("") + "</select>";
   }
   function inboxCard(kind, r) {
-    var mail = '<a href="mailto:' + esc(r.email) + '">' + esc(r.email) + "</a>";
+    var mail = r.email ? '<a href="mailto:' + esc(r.email) + '">' + esc(r.email) + "</a>" : "";
     var meta = kind === "enquiries"
       ? (r.source === "registration"
         ? [mail, r.phone ? '<a href="tel:' + esc(r.phone) + '">' + esc(r.phone) + "</a>" : "", r.role ? esc(r.role) : "",

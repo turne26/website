@@ -69,6 +69,12 @@
   box-shadow: inset 0 0 0 2px var(--muted);
 }
 .b-option small { color: var(--muted); font-size: .85rem; }
+.b-option--locked { cursor: default; }
+.b-option--locked span { background: color-mix(in srgb, var(--violet) 14%, var(--ink-2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--violet) 55%, transparent); }
+.b-option--locked span::before {
+  box-shadow: none; background: var(--violet) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 10.5l3 3 7-7' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/14px no-repeat;
+}
+.b-included { font-style: normal; font-size: .68rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: #d9ccff; margin-left: .4rem; vertical-align: .1em; }
 .b-option input:checked + span { background: color-mix(in srgb, var(--lime) 12%, var(--ink-2)); box-shadow: inset 0 0 0 2px var(--lime); }
 .b-option input:checked + span::before {
   box-shadow: none; background: var(--lime) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 10.5l3 3 7-7' fill='none' stroke='%2307070c' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/14px no-repeat;

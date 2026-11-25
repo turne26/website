@@ -25,7 +25,7 @@ const FEATURES: [keyof typeof ICONS, string, string][] = [
   ["calendar", "Create events", "Demo days, launches and festivals, set up from your phone."],
   ["rooms", "Open startup rooms", "Give every startup its own room with a demo, chat and Q&A."],
   ["ticket", "Manage registrations", "See who signed up and who turned up."],
-  ["gift", "Run giveaways", "Free-to-enter giveaways with clear rules and fair draws."],
+  ["gift", "A giveaway in every event", "Every event runs a free-to-enter giveaway with clear rules and a fair draw."],
   ["chart", "Measure participation", "See who joined, which rooms they visited and who came back."],
   ["people", "Build community", "Turn one-off attendees into people who follow you."],
 ];
@@ -47,7 +47,7 @@ export default function BrandsContent() {
           <div>
             <p className="b-eyebrow">Turne for Brands</p>
             <h1 id="hero-h">Don&apos;t just reach people. <span className="hl-v">Get them to show up.</span></h1>
-            <p className="lede">Turne is India&apos;s participation-first event platform. Host online events, give every startup its own room, run giveaways people trust, and finally see who actually took part.</p>
+            <p className="lede">Turne is India&apos;s participation-first event platform. Host online events, give every startup its own room, run a giveaway people trust in every event, and finally see who actually took part.</p>
             <div className="cta-row">
               <Link className="btn btn--ticket" href="/brands/register/">Register your brand {ARROW}</Link>
               <a className="btn btn--ghost" href="#features">See what you can run</a>

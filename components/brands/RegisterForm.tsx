@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, ApiError, getAttribution } from "@/lib/api";
 import { config } from "@/lib/config";
 import { CityPicker } from "@/components/CityPicker";
-import { BRANDS_EMAIL, CATEGORIES, INTERESTS, SIZES, TIMELINES } from "@/lib/brands";
+import { BRANDS_EMAIL, CATEGORIES, GIVEAWAY_INCLUDED, INTERESTS, SIZES, TIMELINES } from "@/lib/brands";
 
 type Step = 0 | 1 | 2 | 3;
 const STEP_NAMES = ["Your brand", "About you", "Your plans"];
@@ -52,7 +52,7 @@ function validate(step: Step, r: Form, verified: boolean): Errors {
   if (step === 1) {
     if (r.name.trim().length < 2) e.name = "Add your full name.";
     if (r.role.trim().length < 2) e.role = "Add your role, e.g. Marketing lead.";
-    if (!isEmail(r.email)) e.email = "Add a valid work email.";
+    if (r.email.trim() && !isEmail(r.email)) e.email = "Check the email, or leave it empty.";
     if (!validPhone(r.phone)) e.phone = "Add a 10-digit Indian mobile number.";
     else if (!verified) e.phone = "Verify this number on WhatsApp to continue.";
   }
@@ -190,7 +190,7 @@ export function RegisterForm() {
         {reference && <p className="b-ref">Your reference <b>{reference}</b></p>}
         <ol className="b-next">
           <li><b>We review your registration</b><span>and look at what {r.company.trim()} wants to run.</span></li>
-          <li><b>We reach out</b><span>on WhatsApp or at {r.email.trim()} to plan your first event together.</span></li>
+          <li><b>We reach out</b><span>on WhatsApp{r.email.trim() ? ` or at ${r.email.trim()}` : ""} to plan your first event together.</span></li>
           <li><b>You&apos;re ready for launch</b><span>with your brand set up before Turne goes live.</span></li>
         </ol>
         <p className="muted small">Anything to add? Email <a href={`mailto:${BRANDS_EMAIL}`}>{BRANDS_EMAIL}</a>{reference ? ` and mention ${reference}` : ""}.</p>
@@ -290,7 +290,7 @@ export function RegisterForm() {
                 </div>
               </div>
               <div className="field">
-                <label htmlFor="email">Work email</label>
+                <label htmlFor="email">Work email <span className="muted">(optional)</span></label>
                 <input className="input" id="email" name="email" type="email" autoComplete="email" placeholder="you@brand.com"
                   value={r.email} onChange={(e) => set("email", e.target.value)} {...aria("email")} />
                 {err("email")}
@@ -365,6 +365,10 @@ export function RegisterForm() {
                       <span><b>{o.value}</b><small>{o.hint}</small></span>
                     </label>
                   ))}
+                  {/* Every event has a giveaway: shown ticked and locked, not a choice. */}
+                  <div className="b-option b-option--locked">
+                    <span><b>{GIVEAWAY_INCLUDED.title} <em className="b-included">Always included</em></b><small>{GIVEAWAY_INCLUDED.hint}</small></span>
+                  </div>
                 </div>
                 {err("interests")}
               </fieldset>
