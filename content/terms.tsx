@@ -31,7 +31,7 @@ export default function TermsContent() {
 <p>The countdown on our website shows our{" "}<em>planned</em>{" "}launch timeline. Launch dates for pre-launch products move. We may change the launch date, and doing so does not entitle you to any compensation.</p>
 <h2 id="part-b">Part B: Premium membership terms</h2>
 <h3 id="b1">B1. The first-10,000 offer</h3>
-<p>The first 10,000 verified waitlist members qualify for Turne{" "}<strong>2-Year Premium</strong>{" "}membership at no cost. Qualification is determined by verified registration order and is allocated automatically by our systems. Once 10,000 spots are allocated, the offer closes.</p>
+<p>Waitlist spots numbered up to 10,000 qualify for Turne{" "}<strong>2-Year Premium</strong>{" "}membership at no cost. Spot numbers are allocated automatically by our systems in verified registration order and are not necessarily consecutive. Once spot number 10,000 has been allocated, the offer closes.</p>
 <h3 id="b2">B2. How long Premium lasts</h3>
 <p>2-Year Premium lasts for two years (24 months) starting on the day Turne launches publicly, provided your membership remains in good standing. It ends automatically after that period and does not renew on its own; we will tell you before it ends. It does not survive the discontinuation of the Turne service.</p>
 <h3 id="b3">B3. Premium benefits may evolve</h3>

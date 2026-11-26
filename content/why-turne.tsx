@@ -72,7 +72,7 @@ export default function WhyTurneContent() {
 </div>
 <div className="stack">
 <p className="lede">Only{" "}<Stat k="remaining" className="num" />{" "}2-Year Premium spots are left, and the countdown doesn't stop.</p>
-<div className="cta-row"><Link className="btn btn--ticket" href="/join/">Join the waitlist</Link><span className="meta"><Stat k="count" className="num" />+ already waiting</span></div>
+<div className="cta-row"><Link className="btn btn--ticket" href="/join/">Join the waitlist</Link><span className="meta">Next spot #<Stat k="next" className="num" /></span></div>
 </div>
 </div>
 </section>

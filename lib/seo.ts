@@ -97,9 +97,9 @@ function premiumOffer(): Ld {
   return {
     "@type": "Offer",
     "@id": `${SITE}/premium/#offer`,
-    name: "2 years of Turne Premium, free for the first 10,000 waitlist members",
+    name: "2 years of Turne Premium, free for the first 10,000 waitlist spots",
     description:
-      "The first 10,000 people to verify their WhatsApp number on the Turne waitlist get Turne Premium free for 24 months from launch day.",
+      "Waitlist spots numbered up to 10,000, handed out as people verify their WhatsApp number on the Turne waitlist, get Turne Premium free for 24 months from launch day.",
     url: `${SITE}/premium/`,
     price: "0",
     priceCurrency: "INR",

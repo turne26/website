@@ -359,7 +359,7 @@ export default function HowItWorksContent() {
 <section className="wrap w-sec w-end" data-hide-sticky="" aria-labelledby="end-h">
 <div className="h-panel w-endpanel">
 <h2 id="end-h">Your spot on the{" "}<span className="g-violet">expo floor</span>{" "}is waiting.</h2>
-<p>The first 10,000 people on the waitlist get 2 years of Premium free.</p>
+<p>The first 10,000 waitlist spots get 2 years of Premium free.</p>
 <Link className="pill pill--lime pill--lg" href="/join/">Join the Waitlist{" "}<svg className="arr" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10h13M11 4.5 16.5 10 11 15.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg></Link>
 </div>
 </section>

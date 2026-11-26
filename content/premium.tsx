@@ -10,7 +10,7 @@ export default function PremiumContent() {
 <div>
 <nav className="crumbs" aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true">/</span><span aria-current="page">Premium</span></nav>
 <h1 id="prem-h" style={{ fontSize: "clamp(2.34rem,6.3vw,5.10rem)" }}>The first{" "}<span className="hl-v">10,000</span>{" "}get 2 years of Premium.</h1>
-<p className="lede">Be one of the first 10,000 verified members and get two years of Turne Premium, free from launch day. No payment, no catch. You were early.</p>
+<p className="lede">Claim one of the first 10,000 waitlist spots and get two years of Turne Premium, free from launch day. No payment, no catch. You were early.</p>
 <div className="cta-row"><Link className="btn btn--ticket" href="/join/">Claim my spot</Link><span className="small muted"><Stat k="remaining" className="num" />{" "}spots left</span></div>
 </div>
 <div className="ticket ticket--premium" role="img" aria-label="Your next waitlist spot">
@@ -28,19 +28,19 @@ export default function PremiumContent() {
 </div>
 </div>
 </section>
-<section className="band band--ink" aria-label="Premium spots claimed">
+<section className="band band--ink" aria-label="Premium spots left">
 <div className="wrap"><div className="gate">
 <div>
-<h2 className="display" style={{ fontSize: "clamp(1.44rem,2.8vw,2.04rem)" }}>Premium spots claimed</h2>
+<h2 className="display" style={{ fontSize: "clamp(1.44rem,2.8vw,2.04rem)" }}>Premium spots left</h2>
 <div style={{ marginTop: "1.5rem" }}>
-<Tally className="tally" aria-label="1,121 people on the waitlist" />
-<p className="gate__label"><strong><Stat k="count" className="num" /></strong>{" "}people are on the waitlist. Joining takes under a minute.</p>
+<Tally className="tally" aria-label="Premium spots left" />
+<p className="gate__label"><strong><Stat k="remaining" className="num" /></strong>{" "}of 10,000 Premium spots are still open. Joining takes under a minute.</p>
 </div>
 </div>
 <div>
 <p className="small" style={{ fontWeight: "600", marginBottom: ".9rem" }}>2-Year Premium spots</p>
-<Ticks cells={50} className="ticks" role="img" aria-label="1,121 of 10,000 2-Year Premium spots claimed" />
-<div className="ticks-key"><span><strong><Stat k="count" className="num" /></strong>{" "}claimed (<Stat k="percent" className="num" />)</span><span><strong><Stat k="remaining" className="num" /></strong>{" "}left</span><span>Each block is 200 spots</span></div>
+<Ticks cells={50} className="ticks" role="img" aria-label="2-Year Premium spots left" />
+<div className="ticks-key"><span>Next spot{" "}<strong>#<Stat k="next" className="num" /></strong>{" "}(<Stat k="percent" className="num" />{" "}gone)</span><span><strong><Stat k="remaining" className="num" /></strong>{" "}left</span><span>Each block is 200 spots</span></div>
 </div>
 </div></div>
 </section>
@@ -75,7 +75,7 @@ export default function PremiumContent() {
 <div className="wrap">
 <div className="section-head"><h2 id="fine-h">The fine print, plainly</h2></div>
 <ul className="rows">
-<li><h3>Who qualifies</h3><p>The first 10,000 verified waitlist members, in the order their WhatsApp number is verified. The offer closes at 10,000.</p><span className="tag">Terms B1</span></li>
+<li><h3>Who qualifies</h3><p>Waitlist spots up to #10,000, handed out in the order WhatsApp numbers are verified. The offer closes at spot #10,000.</p><span className="tag">Terms B1</span></li>
 <li><h3>2 years</h3><p>Premium runs for 24 months from the day Turne launches, while your membership is in good standing.</p><span className="tag">Terms B2</span></li>
 <li><h3>Just for you</h3><p>Premium is tied to your verified number. It can't be sold, gifted or transferred.</p><span className="tag">Terms B4</span></li>
 <li><h3>Fair use</h3><p>Premium obtained through fraud, automation or duplicate sign-ups can be withdrawn.</p><span className="tag">Terms B5</span></li>
@@ -91,7 +91,7 @@ export default function PremiumContent() {
 </div>
 <div className="stack">
 <p className="lede">Only{" "}<Stat k="remaining" className="num" />{" "}2-Year Premium spots are left, and the countdown doesn't stop.</p>
-<div className="cta-row"><Link className="btn btn--ticket" href="/join/">Join the waitlist</Link><span className="meta"><Stat k="count" className="num" />+ already waiting</span></div>
+<div className="cta-row"><Link className="btn btn--ticket" href="/join/">Join the waitlist</Link><span className="meta">Next spot #<Stat k="next" className="num" /></span></div>
 </div>
 </div>
 </section>

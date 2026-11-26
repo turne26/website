@@ -14,7 +14,7 @@ const FACTS = `- Turne is an online event platform from India ("India ka Apna Ev
 - People join for free to hop between rooms, watch demos, talk to founders, vote, upvote startups and enter giveaways.
 - Giveaways are free to enter and drawn at random. Eligible giveaways split their opportunities 50/50 between normal members and Premium members. Premium never guarantees a win.
 - Turne has not launched yet. The planned launch is ${launch}; the date may change.
-- Founding offer: the first ${config.premiumLimit.toLocaleString("en-IN")} people to verify their WhatsApp number on the waitlist get Turne Premium free for 2 years (24 months from launch day).
+- Founding offer: waitlist spots numbered up to ${config.premiumLimit.toLocaleString("en-IN")} get Turne Premium free for 2 years (24 months from launch day). Spot numbers are handed out in the order people verify their WhatsApp number.
 - Joining the waitlist takes under a minute at ${SITE}/join/: verify a WhatsApp number with a 6-digit code sent on WhatsApp, then add name, date of birth and city. Minimum age ${config.minAge}. Indian (+91) numbers only.
 - Brands register for free at ${SITE}/brands/register/ (WhatsApp-verified, about two minutes) to run events, product launches and startup rooms; every event includes a free-to-enter giveaway. The brands team replies within two working days.
 - Contact: support@turne.in (support), hello@turne.in (general), brands@turne.in (brand partnerships), privacy@turne.in (data and privacy).`;
@@ -25,7 +25,7 @@ export function llmsTxt() {
   const links = ORDER.map((k) => `- [${PAGES[k].title}](${urlFor(k)}): ${PAGES[k].desc}`).join("\n");
   return `# Turne
 
-> Turne is an Indian online event platform where brands host events, every startup gets its own room, and people join to watch demos, talk to founders and win giveaways. The first ${config.premiumLimit.toLocaleString("en-IN")} verified waitlist members get 2 years of Premium free.
+> Turne is an Indian online event platform where brands host events, every startup gets its own room, and people join to watch demos, talk to founders and win giveaways. The first ${config.premiumLimit.toLocaleString("en-IN")} waitlist spots get 2 years of Premium free.
 
 ## Key facts
 

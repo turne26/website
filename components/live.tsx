@@ -69,16 +69,20 @@ export function StatsProvider({ children }: { children: React.ReactNode }) {
 export function useStats() {
   const s = useContext(StatsCtx);
   return useMemo(() => {
-    const remaining = Math.max(0, s.limit - s.count);
+    // Premium goes to spot numbers up to the limit, so "taken" = spots handed out so far
+    // (spot numbers continue from 1020) and "left" = limit minus that.
+    const taken = Math.max(0, s.nextSpot - 1);
+    const remaining = Math.max(0, s.limit - taken);
     return {
       ...s,
+      taken,
       remaining,
       values: {
         count: fmt.format(s.count),
         next: fmt.format(s.nextSpot),
         remaining: fmt.format(remaining),
         limit: fmt.format(s.limit),
-        percent: Math.min(100, (s.count / s.limit) * 100).toFixed(2) + "%",
+        percent: Math.min(100, (taken / s.limit) * 100).toFixed(2) + "%",
       },
     };
   }, [s]);
@@ -92,11 +96,11 @@ export function Stat({ k, className = "num", ...rest }: { k: string } & Componen
   return <span className={className} data-stat={k} {...rest}>{values[k as StatKey]}</span>;
 }
 
-/** The odometer-style waitlist counter. Rolls up from 0 the first time live numbers arrive. */
+/** The odometer-style counter: Premium spots left. Rolls up from 0 the first time live numbers arrive. */
 export function Tally({ className = "tally", ...rest }: ComponentPropsWithoutRef<"div">) {
-  const { count, live } = useStats();
+  const { remaining, live } = useStats();
   const ref = useRef<HTMLDivElement>(null);
-  const text = fmt.format(count);
+  const text = fmt.format(remaining);
 
   useIsoLayoutEffect(() => {
     const reels = Array.from(ref.current?.querySelectorAll<HTMLElement>(".tally__reel") ?? []);
@@ -115,7 +119,7 @@ export function Tally({ className = "tally", ...rest }: ComponentPropsWithoutRef
   }, [text, live]);
 
   return (
-    <div ref={ref} className={className} {...rest} aria-label={`${text} people on the waitlist`}>
+    <div ref={ref} className={className} {...rest} aria-label={`${text} Premium spots left`}>
       {text.split("").map((ch, i) =>
         /\d/.test(ch) ? (
           <span key={i} className="tally__digit" aria-hidden="true">
@@ -133,10 +137,10 @@ export function Tally({ className = "tally", ...rest }: ComponentPropsWithoutRef
 
 /** The grid of Premium spot blocks; each block is limit/cells spots. */
 export function Ticks({ cells = 50, className = "ticks", ...rest }: { cells?: number } & ComponentPropsWithoutRef<"div">) {
-  const { count, limit } = useStats();
-  const on = Math.min(cells, Math.ceil(count / (limit / cells)));
+  const { taken, remaining, limit } = useStats();
+  const on = Math.min(cells, Math.ceil(taken / (limit / cells)));
   return (
-    <div className={className} {...rest} aria-label={`${fmt.format(count)} of ${fmt.format(limit)} 2-Year Premium spots claimed`}>
+    <div className={className} {...rest} aria-label={`${fmt.format(remaining)} of ${fmt.format(limit)} 2-Year Premium spots left`}>
       {Array.from({ length: cells }, (_, i) => <i key={i} className={i < on ? "on" : ""} />)}
     </div>
   );

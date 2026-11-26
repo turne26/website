@@ -33,7 +33,7 @@ export default function PrivacyContent() {
 <ul>
 <li>To verify your mobile number by a one-time password (OTP) sent on WhatsApp.</li>
 <li>To create and maintain your waitlist entry and position.</li>
-<li>To determine whether you qualify for 2-Year Premium as one of the first 10,000 verified members.</li>
+<li>To determine whether you qualify for 2-Year Premium through a waitlist spot within the first 10,000.</li>
 <li>To send you WhatsApp messages about the Turne launch, your waitlist spot and your Premium status.</li>
 <li>To understand, in aggregate, which marketing channels bring people to Turne.</li>
 <li>To detect and prevent spam, abuse and fraudulent registrations.</li>

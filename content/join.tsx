@@ -10,7 +10,7 @@ export default function JoinContent() {
 <div className="wrap join">
 <div className="stack-lg">
 <h1 style={{ fontSize: "clamp(2.16rem,5.6vw,4.42rem)" }}>Join the waitlist.</h1>
-<p className="lede">It takes under a minute. The first 10,000 verified members get 2 years of Premium free.</p>
+<p className="lede">It takes under a minute. The first 10,000 waitlist spots get 2 years of Premium free.</p>
 <div className="ticket" role="img" aria-label="Your next waitlist spot">
 <div className="ticket__main">
 <div className="ticket__brand"><b>TURNE</b><span>Early access</span></div>
@@ -25,8 +25,8 @@ export default function JoinContent() {
 <div className="ticket__stub" aria-hidden="true"><span>No.{" "}<Stat k="next" className="num" /></span></div>
 </div>
 <div>
-<Ticks cells={50} className="ticks" role="img" aria-label="2-Year Premium spots claimed" />
-<div className="ticks-key"><span><strong><Stat k="count" className="num" /></strong>{" "}claimed</span><span><strong><Stat k="remaining" className="num" /></strong>{" "}Premium spots left</span></div>
+<Ticks cells={50} className="ticks" role="img" aria-label="2-Year Premium spots left" />
+<div className="ticks-key"><span>Next spot{" "}<strong>#<Stat k="next" className="num" /></strong></span><span><strong><Stat k="remaining" className="num" /></strong>{" "}Premium spots left</span></div>
 </div>
 </div>
 <div id="join-flow" className="panel" aria-live="polite">
@@ -75,7 +75,7 @@ export default function JoinContent() {
 <p>Three quick fields and your spot is locked in.</p>
 <div className="form">
 <div className="field"><label htmlFor="full-name">Full name</label><input className="input" id="full-name" name="name" autoComplete="name" required /></div>
-<div className="field"><label htmlFor="dob">Date of birth</label><input className="input" id="dob" name="dob" type="date" autoComplete="bday" required /><span className="hint">Some giveaways and experiences have a minimum age.</span></div>
+<div className="field"><label htmlFor="dob">Date of birth <span className="muted">(DD-MM-YYYY)</span></label><input className="input" id="dob" name="dob" type="text" inputMode="numeric" autoComplete="bday" placeholder="DD-MM-YYYY" maxLength={10} required /><span className="hint">Some giveaways and experiences have a minimum age.</span></div>
 <div className="field">
 <label htmlFor="city">City</label>
 <CityPicker id="city" name="city" required />
@@ -97,14 +97,14 @@ export default function JoinContent() {
 <dl className="ticket__rows">
 <div><dt>Your spot</dt><dd data-done-position="">#0</dd></div>
 <div><dt>Status</dt><dd>Verified</dd></div>
-<div><dt>Valid for</dt><dd>Life</dd></div>
+<div><dt>Valid for</dt><dd>2 years</dd></div>
 </dl>
 <div className="ticket__barcode" aria-hidden="true" />
 </div>
 <div className="ticket__stub" aria-hidden="true"><span data-done-position="">#0</span></div>
 </div>
-<p id="done-premium" className="notice notice--ok">2-Year Premium unlocked. You made the first 10,000.</p>
-<p id="done-standard" className="notice" hidden>The 10,000 Premium spots are taken, but you're on the list and will be first through the door at launch.</p>
+<p id="done-premium" className="notice notice--ok">2-Year Premium unlocked. Your spot is in the first 10,000.</p>
+<p id="done-standard" className="notice" hidden>The first 10,000 Premium spots are gone, but you're on the list and will be first through the door at launch.</p>
 <div className="stack">
 <p style={{ fontWeight: "600" }}>Bring your people in too. Spots are going.</p>
 <div className="share-row"><a className="btn btn--ticket" id="share-wa" href="https://wa.me/" target="_blank" rel="noopener">Share on WhatsApp</a></div>
